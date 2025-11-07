@@ -123,11 +123,17 @@ class PianoRoll {
         const grid = document.getElementById('piano-roll-grid');
         grid.innerHTML = '';
 
+        // Set grid as relative positioning container for absolute-positioned notes
+        grid.style.position = 'relative';
+
         // Create a row for each note
         for (let midiNote = this.lowestNote; midiNote <= this.highestNote; midiNote++) {
             const row = document.createElement('div');
             row.className = 'piano-roll-row';
             row.dataset.midiNote = midiNote;
+            row.style.display = 'flex';
+            row.style.height = this.keyHeight + 'px';
+            row.style.position = 'relative'; // Allow absolute-positioned notes inside
 
             // Create 4 bars
             for (let bar = 0; bar < this.numBars; bar++) {
@@ -135,6 +141,7 @@ class PianoRoll {
                 barContainer.style.display = 'flex';
                 barContainer.style.flex = '1';
                 barContainer.style.borderRight = '2px solid #fff';
+                barContainer.style.position = 'relative'; // For note positioning
 
                 // Create 4 beats per bar
                 for (let beat = 0; beat < this.beatsPerBar; beat++) {
@@ -187,27 +194,37 @@ class PianoRoll {
         const oldNotes = grid.querySelectorAll('.midi-note');
         oldNotes.forEach(el => el.remove());
 
+        // Calculate total pixels for positioning
+        const totalBeats = this.numBars * this.beatsPerBar;
+        const gridWidth = totalBeats * this.pixelsPerBeat;
+
         // Render each MIDI note
         for (let i = 0; i < midiNotes.length; i++) {
             const note = midiNotes[i];
 
+            // Get MIDI note from frequency
+            const midiNote = this.frequencyToMidiNote(note.frequency);
+
             // Find the row for this note
-            const row = grid.querySelector(`[data-midi-note="${note.noteKey ? this.frequencyToMidiNote(note.frequency) : note.midiNote}"]`);
+            const row = grid.querySelector(`[data-midi-note="${midiNote}"]`);
             if (!row) continue;
 
-            // Calculate position and width
-            const totalBeats = this.numBars * this.beatsPerBar;
-            const startPercent = (note.startBeat / totalBeats) * 100;
-            const durationPercent = (note.duration / totalBeats) * 100;
+            // Calculate position in pixels (relative to grid)
+            const startPixels = (note.startBeat / totalBeats) * gridWidth;
+            const durationPixels = (note.duration / totalBeats) * gridWidth;
 
-            // Create note element
+            // Create note element with absolute positioning
             const noteEl = document.createElement('div');
             noteEl.className = 'midi-note';
-            noteEl.style.left = startPercent + '%';
-            noteEl.style.width = Math.max(1, durationPercent) + '%';
+            noteEl.style.position = 'absolute';
+            noteEl.style.left = startPixels + 'px';
+            noteEl.style.top = '0';
+            noteEl.style.width = Math.max(10, durationPixels) + 'px';
+            noteEl.style.height = this.keyHeight + 'px';
             noteEl.title = this.frequencyToNoteName(note.frequency);
 
             row.appendChild(noteEl);
+            console.log(`Added note: ${note.frequency}Hz at ${note.startBeat}q for ${note.duration}q`);
         }
     }
 
