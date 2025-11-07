@@ -310,7 +310,7 @@ playBtn.addEventListener('click', async () => {
     await synthEngine.resumeAudio();
     dawCore.setAudioContext(synthEngine.audioContext);
     dawCore.setSynthEngine(synthEngine);
-    dawCore.play();
+    await dawCore.play();
     playBtn.classList.add('active');
     recordBtn.disabled = false;
 });
@@ -335,7 +335,7 @@ recordBtn.addEventListener('click', async () => {
             dawCore.setAudioContext(synthEngine.audioContext);
             dawCore.setSynthEngine(synthEngine);
         }
-        dawCore.record();
+        await dawCore.record();
         recordBtn.classList.add('active');
     }
 });

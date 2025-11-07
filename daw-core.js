@@ -64,33 +64,30 @@ class DAWCore {
         // Set initial BPM
         this.transport.bpm.value = this.bpm;
 
+        // Set loop length on transport
+        this.transport.loopEnd = `${this.loopLengthBeats}q`;
+        this.transport.loop = true;
+
         // Create MIDI part for note playback
         this.midiPart = new Tone.Part((time, note) => {
             if (!this.synthEngine) return;
 
             const noteId = `midi-${note.noteKey}`;
 
-            // Play the note
+            // Play the note at the scheduled time
             this.synthEngine.playNote(note.frequency, noteId);
 
-            // Schedule note release at the appropriate time
-            const releaseDuration = Tone.Time(note.duration, 'quarters').toSeconds();
+            // Schedule note release
+            const noteDurationSeconds = Tone.Time(note.duration, 'quarters').toSeconds();
             Tone.Transport.scheduleOnce(() => {
                 if (this.synthEngine) {
                     this.synthEngine.releaseNote(noteId);
                 }
-            }, Tone.now() + releaseDuration);
+            }, time + noteDurationSeconds);
 
         }, []);
 
-        // Set loop length
-        this.midiPart.loopEnd = `${this.loopLengthBeats}q`; // quarters = beats
-        this.midiPart.loop = true;
-
-        // Add MIDI part to transport
-        this.transport.add(this.midiPart);
-
-        // Set up Tone.Transport callbacks for UI updates
+        // Start metronome and UI update loops
         this.setupTransportCallbacks();
     }
 
@@ -98,33 +95,42 @@ class DAWCore {
      * Set up callbacks for Tone.Transport events
      */
     setupTransportCallbacks() {
-        // Clear existing loops
+        // Clear existing loops if they exist
         if (this.metronomeLoop) {
+            this.metronomeLoop.stop();
             this.metronomeLoop.dispose();
         }
         if (this.uiUpdateLoop) {
+            this.uiUpdateLoop.stop();
             this.uiUpdateLoop.dispose();
         }
 
         // Metronome loop - play clicks on beat boundaries
         this.metronomeLoop = new Tone.Loop((time) => {
             if ((this.metronomeEnabled || this.isRecordingLeadIn) && this.synthEngine) {
-                const beat = this.transport.position.split(':')[1]; // Get beat component
-                const beatInBar = parseInt(beat) % this.beatsPerBar;
+                // Get beat from transport position string (format: "bars:quarters:sixteenths")
+                const posStr = this.transport.position;
+                const parts = posStr.split(':');
+                const beatInBar = parseInt(parts[1]) % this.beatsPerBar;
                 const frequency = beatInBar === 0 ? 1000 : 600;
                 this.synthEngine.playMetronomeClick(frequency, 0.1);
             }
         }, '1q'); // Every beat (quarter note)
+        this.metronomeLoop.start(0);
 
         // UI update loop - emit beat change events and update state
         this.uiUpdateLoop = new Tone.Loop((time) => {
             // Update current beat from Tone.Transport
             const transportPos = this.transport.position;
-            const [bar, beat, sixteenth] = transportPos.split(':').map(parseFloat);
+            const parts = transportPos.split(':');
+            const bar = parseFloat(parts[0]);
+            const beat = parseFloat(parts[1]);
+            const sixteenth = parseFloat(parts[2]) || 0;
+
             this.currentBeat = bar * this.beatsPerBar + beat + (sixteenth / 4);
             this.currentBar = Math.floor(bar);
 
-            // Emit beat changed event
+            // Emit beat changed event only when beat actually changes
             const currentBeatFloor = Math.floor(this.currentBeat);
             if (currentBeatFloor !== this.lastEmittedBeat) {
                 this.emit('beatChanged', {
@@ -134,13 +140,11 @@ class DAWCore {
                 });
                 this.lastEmittedBeat = currentBeatFloor;
             }
-        }, '32n'); // Update every 32nd note for smooth updates
+        }, '16n'); // Update every 16th note for smooth updates
 
-        // Add loops to transport but don't start yet
-        this.transport.add(this.metronomeLoop);
-        this.transport.add(this.uiUpdateLoop);
+        this.uiUpdateLoop.start(0);
 
-        // Handle loop completion
+        // Handle transport loop event
         this.transport.on('loop', () => {
             this.emit('loopComplete');
         });
@@ -163,14 +167,23 @@ class DAWCore {
     /**
      * Start playback
      */
-    play() {
+    async play() {
         if (this.isPlaying) return;
 
-        // Start Tone.Transport
-        Tone.Transport.start();
-        this.isPlaying = true;
-        console.log('Playback started - Tone.Transport running');
-        this.emit('playbackStart');
+        try {
+            // Ensure Tone.js is started
+            if (Tone.getContext().state !== 'running') {
+                await Tone.getContext().resume();
+            }
+
+            // Start Tone.Transport
+            Tone.Transport.start();
+            this.isPlaying = true;
+            console.log('Playback started - Tone.Transport running');
+            this.emit('playbackStart');
+        } catch (error) {
+            console.error('Error starting playback:', error);
+        }
     }
 
     /**
@@ -179,22 +192,26 @@ class DAWCore {
     stop() {
         if (!this.isPlaying) return;
 
-        // Stop Tone.Transport
-        Tone.Transport.stop();
-        Tone.Transport.position = 0; // Reset to beginning
-        this.isPlaying = false;
-        this.currentBeat = 0;
-        this.currentBar = 0;
-        this.lastEmittedBeat = -1;
+        try {
+            // Stop Tone.Transport
+            Tone.Transport.stop();
+            Tone.Transport.position = 0; // Reset to beginning
+            this.isPlaying = false;
+            this.currentBeat = 0;
+            this.currentBar = 0;
+            this.lastEmittedBeat = -1;
 
-        console.log('Playback stopped - Tone.Transport paused');
-        this.emit('playbackStop');
+            console.log('Playback stopped - Tone.Transport paused');
+            this.emit('playbackStop');
+        } catch (error) {
+            console.error('Error stopping playback:', error);
+        }
     }
 
     /**
      * Start recording with lead-in metronome clicks
      */
-    record() {
+    async record() {
         if (this.isRecording) return;
 
         this.isRecording = true;
@@ -208,7 +225,7 @@ class DAWCore {
             this.midiPart.mute = true;
         }
 
-        this.play(); // Start playback if not already
+        await this.play(); // Start playback if not already
 
         // Start actual audio recording after lead-in
         if (this.synthEngine) {
