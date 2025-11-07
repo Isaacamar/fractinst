@@ -353,19 +353,44 @@ metronomeBtn.addEventListener('click', () => {
 // ============================================
 
 viewInstrumentBtn.addEventListener('click', () => {
+    // Ensure pianoRoll exists before trying to hide it
+    if (!pianoRoll && synthEngine.audioContext) {
+        pianoRoll = new PianoRoll(dawCore, synthEngine);
+    }
+
     if (pianoRoll) {
         pianoRoll.hide();
-        viewInstrumentBtn.classList.add('view-btn-active');
-        viewPianoRollBtn.classList.remove('view-btn-active');
+    } else {
+        // Fallback: manually hide piano roll view if pianoRoll doesn't exist
+        const pianoRollView = document.getElementById('piano-roll-view');
+        const dawLayout = document.querySelector('.daw-layout');
+        if (pianoRollView) pianoRollView.style.display = 'none';
+        if (dawLayout) dawLayout.style.display = 'grid';
     }
+
+    viewInstrumentBtn.classList.add('view-btn-active');
+    viewPianoRollBtn.classList.remove('view-btn-active');
+    console.log('Switched to Instrument view');
 });
 
-viewPianoRollBtn.addEventListener('click', () => {
-    if (pianoRoll) {
-        pianoRoll.show();
-        viewPianoRollBtn.classList.add('view-btn-active');
-        viewInstrumentBtn.classList.remove('view-btn-active');
+viewPianoRollBtn.addEventListener('click', async () => {
+    // Ensure audio context and pianoRoll are initialized
+    if (!synthEngine.audioContext) {
+        await synthEngine.resumeAudio();
+        dawCore.setAudioContext(synthEngine.audioContext);
+        dawCore.setSynthEngine(synthEngine);
+        keyboardController.dawCore = dawCore;
     }
+
+    if (!pianoRoll) {
+        pianoRoll = new PianoRoll(dawCore, synthEngine);
+        console.log('Piano roll initialized from ROLL button');
+    }
+
+    pianoRoll.show();
+    viewPianoRollBtn.classList.add('view-btn-active');
+    viewInstrumentBtn.classList.remove('view-btn-active');
+    console.log('Switched to Piano Roll view');
 });
 
 // ============================================
