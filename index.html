@@ -34,6 +34,12 @@
                 <div id="recording-indicator" class="recording-indicator"></div>
             </div>
 
+            <!-- View Toggle -->
+            <div class="view-toggle">
+                <button id="view-instrument-btn" class="view-btn view-btn-active" title="Instrument View">INST</button>
+                <button id="view-piano-roll-btn" class="view-btn" title="Piano Roll View">ROLL</button>
+            </div>
+
             <!-- Octave Controls -->
             <div class="octave-controls">
                 <button id="octave-down-btn" class="octave-btn">-OCT</button>
@@ -294,6 +300,34 @@
                 </div>
             </div>
         </div>
+
+        <!-- Piano Roll View (Hidden by default) -->
+        <div id="piano-roll-view" class="piano-roll-view" style="display: none;">
+            <div class="piano-roll-container">
+                <!-- Left: Piano Keys -->
+                <div class="piano-keys-sidebar">
+                    <div class="piano-keys-header">NOTES</div>
+                    <div class="piano-keys-list" id="piano-keys-list">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Right: Piano Roll Grid -->
+                <div class="piano-roll-area">
+                    <div class="piano-roll-header">
+                        <div class="time-ruler" id="time-ruler">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="piano-roll-grid-container">
+                        <div class="piano-roll-grid" id="piano-roll-grid">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                        <div class="playback-line" id="playback-line" style="left: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="audio-engine.js"></script>
@@ -301,6 +335,7 @@
     <script src="keyboard-controller.js"></script>
     <script src="oscilloscope.js"></script>
     <script src="knob.js"></script>
+    <script src="piano-roll.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

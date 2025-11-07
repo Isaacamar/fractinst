@@ -476,3 +476,201 @@ body {
 .controls-area::-webkit-scrollbar-thumb:hover {
     background: #ccc;
 }
+
+/* View Toggle Buttons */
+.view-toggle {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.view-btn {
+    padding: 8px 14px;
+    background: #000;
+    border: 1px solid #fff;
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    transition: all 0.1s;
+    letter-spacing: 1px;
+}
+
+.view-btn:hover {
+    background: #333;
+}
+
+.view-btn-active {
+    background: #0f0;
+    color: #000;
+    border-color: #0f0;
+}
+
+/* Piano Roll View */
+.piano-roll-view {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: #000;
+    flex: 1;
+}
+
+.piano-roll-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Piano Keys Sidebar */
+.piano-keys-sidebar {
+    width: 60px;
+    background: #1a1a1a;
+    border-right: 2px solid #fff;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.piano-keys-header {
+    padding: 8px;
+    background: #000;
+    border-bottom: 1px solid #fff;
+    font-size: 8px;
+    font-weight: bold;
+    text-align: center;
+    color: #fff;
+    letter-spacing: 1px;
+}
+
+.piano-keys-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.piano-key {
+    height: 20px;
+    border-bottom: 1px solid #333;
+    background: #0a0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7px;
+    color: #666;
+    cursor: pointer;
+    border-right: 1px solid #333;
+    transition: background 0.1s;
+}
+
+.piano-key:hover {
+    background: #1a1a1a;
+}
+
+.piano-key.active {
+    background: #0f0;
+    color: #000;
+}
+
+/* Piano Roll Area */
+.piano-roll-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.piano-roll-header {
+    height: 40px;
+    background: #1a1a1a;
+    border-bottom: 2px solid #fff;
+    flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.time-ruler {
+    display: flex;
+    height: 100%;
+    position: relative;
+}
+
+.time-marker {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    border-right: 1px solid #333;
+    color: #666;
+    font-size: 9px;
+    padding-bottom: 5px;
+    font-weight: bold;
+}
+
+.time-marker.bar-start {
+    border-right-color: #fff;
+    color: #fff;
+}
+
+/* Piano Roll Grid */
+.piano-roll-grid-container {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: #000;
+}
+
+.piano-roll-grid {
+    position: relative;
+    background: #000;
+    display: flex;
+    flex-direction: column-reverse;
+    min-width: 100%;
+}
+
+.piano-roll-row {
+    height: 20px;
+    display: flex;
+    border-bottom: 1px solid #333;
+    position: relative;
+}
+
+.piano-roll-beat {
+    flex: 1;
+    border-right: 1px solid #333;
+    background: #0a0a0a;
+    position: relative;
+    transition: background 0.1s;
+    cursor: pointer;
+}
+
+.piano-roll-beat:hover {
+    background: #1a1a1a;
+}
+
+.piano-roll-beat.bar-line {
+    border-right: 2px solid #fff;
+}
+
+.piano-roll-beat.beat-line {
+    border-right: 1px solid #666;
+}
+
+/* Playback Line */
+.playback-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #f00;
+    z-index: 100;
+    cursor: col-resize;
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.8);
+}
+
+.playback-line:hover {
+    width: 3px;
+    left: -0.5px;
+    box-shadow: 0 0 12px rgba(255, 0, 0, 1);
+}

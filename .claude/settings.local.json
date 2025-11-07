@@ -4,7 +4,9 @@
       "Bash(node -c:*)",
       "Bash(python3:*)",
       "Bash(/dev/null)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)"
     ],
     "deny": [],
     "ask": []

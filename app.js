@@ -11,6 +11,7 @@
 const synthEngine = new SynthEngine();
 const dawCore = new DAWCore();
 const oscilloscope = new Oscilloscope('oscilloscope');
+let pianoRoll = null; // Will be initialized after audio context is ready
 
 // Initialize audio on first user interaction
 document.addEventListener('click', async () => {
@@ -20,6 +21,12 @@ document.addEventListener('click', async () => {
         dawCore.setAudioContext(synthEngine.audioContext);
         dawCore.setSynthEngine(synthEngine);
         console.log('Audio context initialized:', synthEngine.audioContext);
+
+        // Initialize piano roll
+        if (!pianoRoll) {
+            pianoRoll = new PianoRoll(dawCore, synthEngine);
+            console.log('Piano roll initialized');
+        }
     }
 }, { once: true });
 
@@ -38,6 +45,8 @@ const stopBtn = document.getElementById('stop-btn');
 const recordBtn = document.getElementById('record-btn');
 const metronomeBtn = document.getElementById('metronome-btn');
 const recordingIndicator = document.getElementById('recording-indicator');
+const viewInstrumentBtn = document.getElementById('view-instrument-btn');
+const viewPianoRollBtn = document.getElementById('view-piano-roll-btn');
 const waveButtons = document.querySelectorAll('.wave-btn');
 const filterTypeButtons = document.querySelectorAll('.filter-type-btn');
 const lfoTargetButtons = document.querySelectorAll('.lfo-target-btn');
@@ -336,6 +345,26 @@ metronomeBtn.addEventListener('click', () => {
 });
 
 // ============================================
+// VIEW TOGGLE
+// ============================================
+
+viewInstrumentBtn.addEventListener('click', () => {
+    if (pianoRoll) {
+        pianoRoll.hide();
+        viewInstrumentBtn.classList.add('view-btn-active');
+        viewPianoRollBtn.classList.remove('view-btn-active');
+    }
+});
+
+viewPianoRollBtn.addEventListener('click', () => {
+    if (pianoRoll) {
+        pianoRoll.show();
+        viewPianoRollBtn.classList.add('view-btn-active');
+        viewInstrumentBtn.classList.remove('view-btn-active');
+    }
+});
+
+// ============================================
 // RECORDING EVENT LISTENERS
 // ============================================
 
@@ -390,6 +419,10 @@ function updateOctaveDisplay() {
 
 dawCore.on('beatChanged', (data) => {
     timeDisplay.textContent = dawCore.getFormattedTime();
+    // Update piano roll playback line
+    if (pianoRoll) {
+        pianoRoll.updatePlaybackLine(dawCore.currentBeat);
+    }
 });
 
 dawCore.on('barChanged', (data) => {
