@@ -684,3 +684,22 @@ body {
     left: -2px;
     box-shadow: 0 0 20px rgba(255, 100, 0, 1);
 }
+
+/* MIDI Notes on Piano Roll */
+.midi-note {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    background: linear-gradient(135deg, #0f0, #0a0);
+    border: 1px solid #fff;
+    border-radius: 2px;
+    cursor: pointer;
+    opacity: 0.8;
+    min-width: 2px;
+    z-index: 10;
+}
+
+.midi-note:hover {
+    opacity: 1;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.8);
+}

@@ -391,7 +391,10 @@ dawCore.on('recordingStop', (data) => {
         if (data.midiNotes && data.midiNotes.length > 0) {
             console.log('MIDI notes recorded:', data.midiNotes.length, 'notes');
             console.log('MIDI data:', data.midiNotes);
-            // MIDI notes are now available for playback!
+            // Display MIDI notes on piano roll if it exists
+            if (pianoRoll) {
+                pianoRoll.displayMidiNotes(data.midiNotes);
+            }
         }
     }
 });
@@ -441,8 +444,11 @@ dawCore.on('loopComplete', () => {
 });
 
 // ============================================
-// OSCILLOSCOPE
+// OSCILLOSCOPE & UI UPDATES (combined for efficiency)
 // ============================================
+
+let lastActiveNoteUpdate = 0;
+const activeNoteUpdateInterval = 100; // ms
 
 oscilloscope.start(() => {
     const waveformData = synthEngine.getWaveformData();
@@ -452,15 +458,14 @@ oscilloscope.start(() => {
     } else {
         oscilloscope.clear();
     }
+
+    // Update active notes count less frequently to avoid DOM thrashing
+    const now = performance.now();
+    if (now - lastActiveNoteUpdate > activeNoteUpdateInterval) {
+        activeNotesCount.textContent = synthEngine.getActiveNoteCount();
+        lastActiveNoteUpdate = now;
+    }
 });
-
-// ============================================
-// UPDATE ACTIVE NOTES COUNT
-// ============================================
-
-setInterval(() => {
-    activeNotesCount.textContent = synthEngine.getActiveNoteCount();
-}, 100);
 
 // ============================================
 // INITIALIZATION

@@ -175,6 +175,58 @@ class PianoRoll {
     }
 
     /**
+     * Display MIDI notes on the piano roll grid
+     */
+    displayMidiNotes(midiNotes) {
+        if (!midiNotes || midiNotes.length === 0) return;
+
+        const grid = document.getElementById('piano-roll-grid');
+        if (!grid) return;
+
+        // Clear previous note elements
+        const oldNotes = grid.querySelectorAll('.midi-note');
+        oldNotes.forEach(el => el.remove());
+
+        // Render each MIDI note
+        for (let i = 0; i < midiNotes.length; i++) {
+            const note = midiNotes[i];
+
+            // Find the row for this note
+            const row = grid.querySelector(`[data-midi-note="${note.noteKey ? this.frequencyToMidiNote(note.frequency) : note.midiNote}"]`);
+            if (!row) continue;
+
+            // Calculate position and width
+            const totalBeats = this.numBars * this.beatsPerBar;
+            const startPercent = (note.startBeat / totalBeats) * 100;
+            const durationPercent = (note.duration / totalBeats) * 100;
+
+            // Create note element
+            const noteEl = document.createElement('div');
+            noteEl.className = 'midi-note';
+            noteEl.style.left = startPercent + '%';
+            noteEl.style.width = Math.max(1, durationPercent) + '%';
+            noteEl.title = this.frequencyToNoteName(note.frequency);
+
+            row.appendChild(noteEl);
+        }
+    }
+
+    /**
+     * Convert frequency to MIDI note number
+     */
+    frequencyToMidiNote(frequency) {
+        return Math.round(12 * Math.log2(frequency / 440) + 69);
+    }
+
+    /**
+     * Convert frequency to note name
+     */
+    frequencyToNoteName(frequency) {
+        const midiNote = this.frequencyToMidiNote(frequency);
+        return this.midiToNoteName(midiNote);
+    }
+
+    /**
      * Setup playback line dragging with better UX
      */
     setupPlaybackLineDragging() {
@@ -239,16 +291,21 @@ class PianoRoll {
     }
 
     /**
-     * Update playback line position smoothly with GPU acceleration
+     * Update playback line position (optimized - minimal DOM updates)
      */
     updatePlaybackLine(beatPosition) {
-        if (!this.playbackLine || !this.gridContainer) return;
+        if (!this.playbackLine) return;
 
         const totalBeats = this.numBars * this.beatsPerBar;
         const percentage = (beatPosition / totalBeats) * 100;
 
-        // Use left property for positioning (more reliable for absolute positioned elements)
-        this.playbackLine.style.left = percentage + '%';
+        // Only update if percentage has changed significantly (1 decimal place)
+        const currentLeft = this.playbackLine.style.left;
+        const newLeft = percentage.toFixed(2) + '%';
+
+        if (currentLeft !== newLeft) {
+            this.playbackLine.style.left = newLeft;
+        }
     }
 
     /**

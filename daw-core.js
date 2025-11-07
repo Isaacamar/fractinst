@@ -209,37 +209,47 @@ class DAWCore {
     }
 
     /**
-     * Playback recorded MIDI notes
+     * Playback recorded MIDI notes (optimized - only check notes that should be active)
      * Triggers notes at appropriate beat positions during playback
      */
     playbackMidiNotes() {
         if (!this.synthEngine || this.midiNotes.length === 0 || !this.isPlaying) return;
 
-        // Check each recorded note to see if it should be triggered
-        this.midiNotes.forEach((note) => {
-            const noteStartThreshold = 0.05; // Trigger within 50ms of beat position
+        const currentBeat = this.currentBeat;
+        const noteStartThreshold = 0.05;
+
+        // Only iterate through notes (no forEach overhead, use for loop)
+        for (let i = 0; i < this.midiNotes.length; i++) {
+            const note = this.midiNotes[i];
+            const noteEnd = note.startBeat + note.duration;
+
+            // Skip if note is already past its end
+            if (currentBeat >= noteEnd && note.isPlaying) {
+                this.synthEngine.releaseNote(`midi-${note.noteKey}`);
+                note.isPlaying = false;
+                continue;
+            }
+
+            // Skip if we're past this note's window
+            if (currentBeat > note.startBeat + noteStartThreshold) {
+                if (!note.isPlaying && currentBeat < noteEnd) {
+                    // Late trigger - still in duration window
+                    this.synthEngine.playNote(note.frequency, `midi-${note.noteKey}`);
+                    note.isPlaying = true;
+                }
+                continue;
+            }
 
             // Check if we've just reached this note's start time
             if (
-                this.currentBeat >= note.startBeat &&
-                this.currentBeat < note.startBeat + noteStartThreshold &&
+                currentBeat >= note.startBeat &&
+                currentBeat < note.startBeat + noteStartThreshold &&
                 !note.isPlaying
             ) {
-                // Start playing the note
                 this.synthEngine.playNote(note.frequency, `midi-${note.noteKey}`);
                 note.isPlaying = true;
             }
-
-            // Check if note duration has elapsed
-            if (
-                note.isPlaying &&
-                this.currentBeat >= (note.startBeat + note.duration)
-            ) {
-                // Release the note
-                this.synthEngine.releaseNote(`midi-${note.noteKey}`);
-                note.isPlaying = false;
-            }
-        });
+        }
     }
 
     /**
@@ -285,9 +295,11 @@ class DAWCore {
     }
 
     /**
-     * Internal timing loop - runs every frame
+     * Internal timing loop - runs every frame (highly optimized)
      */
     startTimingLoop() {
+        let lastBeatChangedEmit = -1; // Cache last beat to avoid duplicate emissions
+
         const update = () => {
             if (!this.isPlaying) return;
 
@@ -296,52 +308,40 @@ class DAWCore {
             this.lastTimestamp = now;
 
             // Calculate beat increment based on BPM and delta time
-            // BPM = beats per minute, so beats per second = BPM / 60
             const beatsPerSecond = this.bpm / 60;
-            const beatDelta = beatsPerSecond * deltaTime;
-
-            const previousBeat = Math.floor(this.currentBeat);
-            const previousBar = this.currentBar;
-
-            // Update beat position
-            this.currentBeat += beatDelta;
+            this.currentBeat += beatsPerSecond * deltaTime;
 
             // Handle loop wrap-around
             if (this.currentBeat >= this.loopLengthBeats) {
                 this.currentBeat = 0;
                 this.currentBar = 0;
-                this.resetMidiPlaybackState(); // Reset MIDI playback for next loop
+                this.resetMidiPlaybackState();
                 this.emit('loopComplete');
             } else {
-                // Update bar position
                 this.currentBar = Math.floor(this.currentBeat / this.beatsPerBar);
             }
 
-            // Playback MIDI notes if we have any
-            if (!this.isRecordingMidi) {
+            // Playback MIDI notes if we have any (only when not recording)
+            if (!this.isRecordingMidi && this.midiNotes.length > 0) {
                 this.playbackMidiNotes();
             }
 
-            // Emit events on beat/bar changes
+            // Emit beatChanged only when beat actually changes
             const currentBeatFloor = Math.floor(this.currentBeat);
-            if (currentBeatFloor > previousBeat) {
+            if (currentBeatFloor !== lastBeatChangedEmit) {
                 this.emit('beatChanged', {
                     beat: currentBeatFloor,
                     bar: this.currentBar,
-                    subBeat: this.currentBeat % 1 // Fractional part
+                    subBeat: this.currentBeat % 1
                 });
+                lastBeatChangedEmit = currentBeatFloor;
 
-                // Play metronome click if enabled (during lead-in or recording)
+                // Play metronome click if enabled
                 if ((this.metronomeEnabled || this.isRecordingLeadIn) && this.synthEngine) {
                     const beatInBar = currentBeatFloor % this.beatsPerBar;
-                    // Higher frequency on beat 1 of each bar, lower on other beats
                     const frequency = beatInBar === 0 ? 1000 : 600;
                     this.synthEngine.playMetronomeClick(frequency, 0.1);
                 }
-            }
-
-            if (this.currentBar > previousBar) {
-                this.emit('barChanged', { bar: this.currentBar });
             }
 
             this.animationFrameId = requestAnimationFrame(update);
