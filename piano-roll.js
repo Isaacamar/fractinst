@@ -242,14 +242,13 @@ class PianoRoll {
      * Update playback line position smoothly with GPU acceleration
      */
     updatePlaybackLine(beatPosition) {
-        if (!this.playbackLine) return;
+        if (!this.playbackLine || !this.gridContainer) return;
 
         const totalBeats = this.numBars * this.beatsPerBar;
         const percentage = (beatPosition / totalBeats) * 100;
-        const pixelPosition = (percentage / 100) * this.gridContainer.scrollWidth;
 
-        // Use transform: translateX for GPU acceleration (smoother than left property)
-        this.playbackLine.style.transform = `translateX(${pixelPosition}px)`;
+        // Use left property for positioning (more reliable for absolute positioned elements)
+        this.playbackLine.style.left = percentage + '%';
     }
 
     /**
