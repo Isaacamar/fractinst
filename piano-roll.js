@@ -283,11 +283,15 @@ class PianoRoll {
         const totalBeats = this.numBars * this.beatsPerBar;
         const beatPosition = (percentage / 100) * totalBeats;
 
-        // Update DAW and playback line
-        this.dawCore.currentBeat = Math.max(0, Math.min(totalBeats - 0.01, beatPosition));
-        this.updatePlaybackLine(this.dawCore.currentBeat);
+        // Update Tone.Transport position using quarter notes (beats)
+        const beatPositionClamped = Math.max(0, Math.min(totalBeats - 0.01, beatPosition));
+        if (this.dawCore.transport) {
+            this.dawCore.transport.position = `${beatPositionClamped}q`; // quarters = beats
+        }
 
-        console.log('Scrubbed to beat:', this.dawCore.currentBeat.toFixed(2));
+        this.updatePlaybackLine(beatPositionClamped);
+
+        console.log('Scrubbed to beat:', beatPositionClamped.toFixed(2));
     }
 
     /**

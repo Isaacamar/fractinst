@@ -1,5 +1,6 @@
 /**
  * DAW Core - Global state management and timing
+ * Uses Tone.Transport for professional-grade MIDI scheduling
  * Manages BPM, loop timing, transport controls, and event system
  */
 
@@ -19,7 +20,6 @@ class DAWCore {
 
         // Audio context reference (will be set by SynthEngine)
         this.audioContext = null;
-        this.lastTimestamp = null;
 
         // Metronome and recording
         this.synthEngine = null;
@@ -44,8 +44,100 @@ class DAWCore {
         this.midiNotes = []; // Array of recorded MIDI notes
         this.isRecordingMidi = false;
 
-        // Animation frame ID for the timing loop
-        this.animationFrameId = null;
+        // Tone.Transport integration
+        this.transport = null;
+        this.midiPart = null;
+        this.metronomeLoop = null;
+        this.uiUpdateLoop = null;
+        this.lastEmittedBeat = -1;
+
+        // Initialize Tone.Transport
+        this.initializeTransport();
+    }
+
+    /**
+     * Initialize Tone.Transport and set up MIDI scheduling
+     */
+    initializeTransport() {
+        this.transport = Tone.Transport;
+
+        // Set initial BPM
+        this.transport.bpm.value = this.bpm;
+
+        // Create MIDI part for note playback
+        this.midiPart = new Tone.Part((time, note) => {
+            if (this.synthEngine) {
+                this.synthEngine.playNote(note.frequency, `midi-${note.noteKey}`);
+                // Schedule note release
+                Tone.Transport.scheduleOnce(() => {
+                    if (this.synthEngine) {
+                        this.synthEngine.releaseNote(`midi-${note.noteKey}`);
+                    }
+                }, time + Tone.Time(note.duration, 'quarters').toSeconds());
+            }
+        }, []);
+
+        // Set loop length
+        this.midiPart.loopEnd = `${this.loopLengthBeats}q`; // quarters = beats
+        this.midiPart.loop = true;
+
+        // Add MIDI part to transport
+        this.transport.add(this.midiPart);
+
+        // Set up Tone.Transport callbacks for UI updates
+        this.setupTransportCallbacks();
+    }
+
+    /**
+     * Set up callbacks for Tone.Transport events
+     */
+    setupTransportCallbacks() {
+        // Clear existing loops
+        if (this.metronomeLoop) {
+            this.metronomeLoop.dispose();
+        }
+        if (this.uiUpdateLoop) {
+            this.uiUpdateLoop.dispose();
+        }
+
+        // Metronome loop - play clicks on beat boundaries
+        this.metronomeLoop = new Tone.Loop((time) => {
+            if ((this.metronomeEnabled || this.isRecordingLeadIn) && this.synthEngine) {
+                const beat = this.transport.position.split(':')[1]; // Get beat component
+                const beatInBar = parseInt(beat) % this.beatsPerBar;
+                const frequency = beatInBar === 0 ? 1000 : 600;
+                this.synthEngine.playMetronomeClick(frequency, 0.1);
+            }
+        }, '1q'); // Every beat (quarter note)
+
+        // UI update loop - emit beat change events and update state
+        this.uiUpdateLoop = new Tone.Loop((time) => {
+            // Update current beat from Tone.Transport
+            const transportPos = this.transport.position;
+            const [bar, beat, sixteenth] = transportPos.split(':').map(parseFloat);
+            this.currentBeat = bar * this.beatsPerBar + beat + (sixteenth / 4);
+            this.currentBar = Math.floor(bar);
+
+            // Emit beat changed event
+            const currentBeatFloor = Math.floor(this.currentBeat);
+            if (currentBeatFloor !== this.lastEmittedBeat) {
+                this.emit('beatChanged', {
+                    beat: currentBeatFloor,
+                    bar: this.currentBar,
+                    subBeat: this.currentBeat % 1
+                });
+                this.lastEmittedBeat = currentBeatFloor;
+            }
+        }, '32n'); // Update every 32nd note for smooth updates
+
+        // Add loops to transport but don't start yet
+        this.transport.add(this.metronomeLoop);
+        this.transport.add(this.uiUpdateLoop);
+
+        // Handle loop completion
+        this.transport.on('loop', () => {
+            this.emit('loopComplete');
+        });
     }
 
     /**
@@ -68,9 +160,9 @@ class DAWCore {
     play() {
         if (this.isPlaying) return;
 
+        // Start Tone.Transport
+        Tone.Transport.start();
         this.isPlaying = true;
-        this.lastTimestamp = this.audioContext ? this.audioContext.currentTime : performance.now() / 1000;
-        this.startTimingLoop();
         this.emit('playbackStart');
     }
 
@@ -80,14 +172,13 @@ class DAWCore {
     stop() {
         if (!this.isPlaying) return;
 
+        // Stop Tone.Transport
+        Tone.Transport.stop();
+        Tone.Transport.position = 0; // Reset to beginning
         this.isPlaying = false;
         this.currentBeat = 0;
         this.currentBar = 0;
-
-        if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
+        this.lastEmittedBeat = -1;
 
         this.emit('playbackStop');
     }
@@ -103,6 +194,12 @@ class DAWCore {
         this.isRecordingMidi = false; // Will enable after lead-in
         this.midiNotes = []; // Clear previous MIDI notes
         console.log('Recording started with lead-in');
+
+        // Disable MIDI part playback during recording (we're recording, not playing back)
+        if (this.midiPart) {
+            this.midiPart.mute = true;
+        }
+
         this.play(); // Start playback if not already
 
         // Start actual audio recording after lead-in
@@ -133,6 +230,11 @@ class DAWCore {
         this.isRecordingLeadIn = false;
         this.isRecordingMidi = false;
 
+        // Re-enable MIDI part playback (now that recording is done)
+        if (this.midiPart) {
+            this.midiPart.mute = false;
+        }
+
         if (this.synthEngine) {
             const recordingPromise = this.synthEngine.stopRecording();
             if (recordingPromise && recordingPromise.then) {
@@ -161,7 +263,8 @@ class DAWCore {
             noteKey: noteData.noteKey,
             startBeat: this.currentBeat,
             velocity: noteData.velocity || 100,
-            noteOn: true
+            noteOn: true,
+            duration: 0.5 // Default duration, will be updated on release
         };
 
         this.midiNotes.push(note);
@@ -182,6 +285,9 @@ class DAWCore {
                 this.midiNotes[i].duration = Math.max(0.01, duration); // Minimum 0.01 beats
                 this.midiNotes[i].noteOn = false;
                 console.log('MIDI note release:', noteKey, 'Duration:', duration);
+
+                // Update the MIDI part with the new note
+                this.updateMidiPart();
                 break;
             }
         }
@@ -199,6 +305,9 @@ class DAWCore {
      */
     clearMidiNotes() {
         this.midiNotes = [];
+        if (this.midiPart) {
+            this.midiPart.removeAll();
+        }
     }
 
     /**
@@ -206,58 +315,24 @@ class DAWCore {
      */
     setMidiNotes(notes) {
         this.midiNotes = notes || [];
+        this.updateMidiPart();
     }
 
     /**
-     * Playback recorded MIDI notes (optimized - only check notes that should be active)
-     * Triggers notes at appropriate beat positions during playback
+     * Update MIDI part with current notes
+     * Called after MIDI notes change to sync with Tone.Part
      */
-    playbackMidiNotes() {
-        if (!this.synthEngine || this.midiNotes.length === 0 || !this.isPlaying) return;
+    updateMidiPart() {
+        if (!this.midiPart) return;
 
-        const currentBeat = this.currentBeat;
-        const noteStartThreshold = 0.05;
+        // Clear existing notes
+        this.midiPart.removeAll();
 
-        // Only iterate through notes (no forEach overhead, use for loop)
-        for (let i = 0; i < this.midiNotes.length; i++) {
-            const note = this.midiNotes[i];
-            const noteEnd = note.startBeat + note.duration;
-
-            // Skip if note is already past its end
-            if (currentBeat >= noteEnd && note.isPlaying) {
-                this.synthEngine.releaseNote(`midi-${note.noteKey}`);
-                note.isPlaying = false;
-                continue;
-            }
-
-            // Skip if we're past this note's window
-            if (currentBeat > note.startBeat + noteStartThreshold) {
-                if (!note.isPlaying && currentBeat < noteEnd) {
-                    // Late trigger - still in duration window
-                    this.synthEngine.playNote(note.frequency, `midi-${note.noteKey}`);
-                    note.isPlaying = true;
-                }
-                continue;
-            }
-
-            // Check if we've just reached this note's start time
-            if (
-                currentBeat >= note.startBeat &&
-                currentBeat < note.startBeat + noteStartThreshold &&
-                !note.isPlaying
-            ) {
-                this.synthEngine.playNote(note.frequency, `midi-${note.noteKey}`);
-                note.isPlaying = true;
-            }
-        }
-    }
-
-    /**
-     * Reset MIDI note playback state
-     */
-    resetMidiPlaybackState() {
+        // Add notes to the part with proper timing
         this.midiNotes.forEach((note) => {
-            note.isPlaying = false;
+            // Convert beat position to Tone time format (quarters = beats)
+            const time = `${note.startBeat}q`;
+            this.midiPart.add(time, note);
         });
     }
 
@@ -284,6 +359,7 @@ class DAWCore {
      */
     setBPM(bpm) {
         this.bpm = Math.max(20, Math.min(300, bpm)); // Clamp 20-300 BPM
+        this.transport.bpm.value = this.bpm;
     }
 
     /**
@@ -292,63 +368,14 @@ class DAWCore {
     setLoopLengthBars(bars) {
         this.loopLengthBars = Math.max(1, bars);
         this.loopLengthBeats = this.beatsPerBar * this.loopLengthBars;
+
+        // Update Tone.Transport loop length
+        if (this.midiPart) {
+            this.midiPart.loopEnd = `${this.loopLengthBeats}q`;
+        }
+        this.transport.loopEnd = `${this.loopLengthBeats}q`;
     }
 
-    /**
-     * Internal timing loop - runs every frame (highly optimized)
-     */
-    startTimingLoop() {
-        let lastBeatChangedEmit = -1; // Cache last beat to avoid duplicate emissions
-
-        const update = () => {
-            if (!this.isPlaying) return;
-
-            const now = this.audioContext ? this.audioContext.currentTime : performance.now() / 1000;
-            const deltaTime = now - this.lastTimestamp;
-            this.lastTimestamp = now;
-
-            // Calculate beat increment based on BPM and delta time
-            const beatsPerSecond = this.bpm / 60;
-            this.currentBeat += beatsPerSecond * deltaTime;
-
-            // Handle loop wrap-around
-            if (this.currentBeat >= this.loopLengthBeats) {
-                this.currentBeat = 0;
-                this.currentBar = 0;
-                this.resetMidiPlaybackState();
-                this.emit('loopComplete');
-            } else {
-                this.currentBar = Math.floor(this.currentBeat / this.beatsPerBar);
-            }
-
-            // Playback MIDI notes if we have any (only when not recording)
-            if (!this.isRecordingMidi && this.midiNotes.length > 0) {
-                this.playbackMidiNotes();
-            }
-
-            // Emit beatChanged only when beat actually changes
-            const currentBeatFloor = Math.floor(this.currentBeat);
-            if (currentBeatFloor !== lastBeatChangedEmit) {
-                this.emit('beatChanged', {
-                    beat: currentBeatFloor,
-                    bar: this.currentBar,
-                    subBeat: this.currentBeat % 1
-                });
-                lastBeatChangedEmit = currentBeatFloor;
-
-                // Play metronome click if enabled
-                if ((this.metronomeEnabled || this.isRecordingLeadIn) && this.synthEngine) {
-                    const beatInBar = currentBeatFloor % this.beatsPerBar;
-                    const frequency = beatInBar === 0 ? 1000 : 600;
-                    this.synthEngine.playMetronomeClick(frequency, 0.1);
-                }
-            }
-
-            this.animationFrameId = requestAnimationFrame(update);
-        };
-
-        this.animationFrameId = requestAnimationFrame(update);
-    }
 
     /**
      * Add an event listener
