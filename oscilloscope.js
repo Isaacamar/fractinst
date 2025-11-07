@@ -2,7 +2,8 @@
  * Oscilloscope Visualizer - Cymatics-Inspired Geometric Visualization
  * Mathematical, resonance-based visual patterns
  *
- * Three modes:
+ * Four modes:
+ * 0. BARS - Original vertical standing wave (classic oscilloscope)
  * 1. WAVE - Ripple patterns from center (standing wave interference)
  * 2. GRID - Hexagonal/geometric deformation based on frequencies
  * 3. TRACE - Connected line oscillating with audio data
@@ -16,7 +17,7 @@ class Oscilloscope {
         window.addEventListener('resize', () => this.resize());
 
         // Visualization mode
-        this.mode = 'wave'; // 'wave', 'grid', 'trace'
+        this.mode = 'bars'; // 'bars', 'wave', 'grid', 'trace'
 
         // Time for animations
         this.time = 0;
@@ -60,6 +61,9 @@ class Oscilloscope {
 
         // Draw based on selected mode
         switch (this.mode) {
+            case 'bars':
+                this.drawBars(data);
+                break;
             case 'wave':
                 this.drawCymaticWaves(data, avgAmplitude);
                 break;
@@ -70,7 +74,46 @@ class Oscilloscope {
                 this.drawOscillatingTrace(data, avgAmplitude);
                 break;
             default:
-                this.drawCymaticWaves(data, avgAmplitude);
+                this.drawBars(data);
+        }
+    }
+
+    /**
+     * Mode 0: BARS - Original vertical standing wave (classic)
+     */
+    drawBars(data) {
+        this.drawGrid();
+
+        // Draw center line (vertical)
+        this.ctx.strokeStyle = '#444';
+        this.ctx.lineWidth = 1;
+        this.ctx.setLineDash([5, 5]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.width / 2, 0);
+        this.ctx.lineTo(this.width / 2, this.height);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+
+        // Draw waveform as vertical bars
+        const bufferLength = Math.min(data.length, 128);
+        const barWidth = (this.width * 0.9) / bufferLength;
+        const centerX = this.width / 2;
+        const centerY = this.height / 2;
+        const amplitude = this.height * 0.35;
+
+        this.ctx.strokeStyle = '#0f0';
+        this.ctx.lineWidth = Math.max(2, barWidth * 0.8);
+        this.ctx.lineCap = 'round';
+
+        for (let i = 0; i < bufferLength; i++) {
+            const v = (data[i] / 128.0) - 1.0;
+            const barHeight = v * amplitude;
+            const x = centerX - (bufferLength * barWidth / 2) + (i * barWidth) + (barWidth / 2);
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, centerY);
+            this.ctx.lineTo(x, centerY - barHeight);
+            this.ctx.stroke();
         }
     }
 
