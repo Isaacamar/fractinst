@@ -369,6 +369,26 @@ viewPianoRollBtn.addEventListener('click', () => {
 });
 
 // ============================================
+// VISUALIZATION MODE TOGGLES
+// ============================================
+
+const vizToggles = document.querySelectorAll('.viz-toggle');
+vizToggles.forEach((btn) => {
+    btn.addEventListener('click', () => {
+        // Remove active class from all toggles
+        vizToggles.forEach(b => b.classList.remove('active'));
+
+        // Add active class to clicked toggle
+        btn.classList.add('active');
+
+        // Set oscilloscope mode
+        const mode = btn.dataset.mode;
+        oscilloscope.setMode(mode);
+        console.log('Visualization mode changed to:', mode);
+    });
+});
+
+// ============================================
 // RECORDING EVENT LISTENERS
 // ============================================
 
