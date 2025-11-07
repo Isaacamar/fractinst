@@ -22,6 +22,10 @@ document.addEventListener('click', async () => {
         dawCore.setSynthEngine(synthEngine);
         console.log('Audio context initialized:', synthEngine.audioContext);
 
+        // Connect keyboard controller to DAW for MIDI recording
+        keyboardController.dawCore = dawCore;
+        console.log('Keyboard controller connected to DAW');
+
         // Initialize piano roll
         if (!pianoRoll) {
             pianoRoll = new PianoRoll(dawCore, synthEngine);
@@ -30,7 +34,7 @@ document.addEventListener('click', async () => {
     }
 }, { once: true });
 
-// Initialize keyboard controller
+// Initialize keyboard controller (will be updated with dawCore after it's ready)
 const keyboardController = new KeyboardController(synthEngine, {
     layout: 'qwerty',
     octaveOffset: 4
@@ -379,13 +383,16 @@ dawCore.on('recordingActualStart', () => {
 
 dawCore.on('recordingStop', (data) => {
     recordingIndicator.classList.remove('recording-active', 'recording-lead-in');
-    if (data && data.recordingUrl) {
-        console.log('Recording saved at:', data.recordingUrl);
-        // Could auto-download or provide playback option here
-        // const link = document.createElement('a');
-        // link.href = data.recordingUrl;
-        // link.download = 'recording.webm';
-        // link.click();
+    if (data) {
+        if (data.recordingUrl) {
+            console.log('Recording saved at:', data.recordingUrl);
+            console.log('You can download or playback this audio');
+        }
+        if (data.midiNotes && data.midiNotes.length > 0) {
+            console.log('MIDI notes recorded:', data.midiNotes.length, 'notes');
+            console.log('MIDI data:', data.midiNotes);
+            // MIDI notes are now available for playback!
+        }
     }
 });
 

@@ -109,9 +109,22 @@ class SynthEngine {
         this.analyser.fftSize = 2048;
         this.analyser.smoothingTimeConstant = 0.8;
 
+        // Create recording destination early (will be used when recording starts)
+        try {
+            this.recordingDestination = this.audioContext.createMediaStreamAudioDestination();
+            console.log('Recording destination created successfully');
+        } catch (error) {
+            console.warn('Recording destination creation failed:', error);
+        }
+
         // Connect master -> analyser -> destination (normal audio output)
         this.masterGain.connect(this.analyser);
         this.analyser.connect(this.audioContext.destination);
+
+        // Also connect master to recording destination for audio capture
+        if (this.recordingDestination) {
+            this.masterGain.connect(this.recordingDestination);
+        }
 
         const bufferLength = this.analyser.frequencyBinCount;
         this.waveformData = new Uint8Array(bufferLength);
@@ -661,21 +674,35 @@ class SynthEngine {
             return;
         }
 
+        if (!this.recordingDestination) {
+            console.error('Recording destination not initialized. Call resumeAudio() first.');
+            return;
+        }
+
         if (this.isRecording) return;
 
         try {
             this.recordedChunks = [];
 
-            // Create recording destination if it doesn't exist
-            if (!this.recordingDestination) {
-                this.recordingDestination = this.audioContext.createMediaStreamAudioDestination();
-                // Connect master to recording destination in parallel
-                this.masterGain.connect(this.recordingDestination);
-                console.log('Created recording destination and connected to master gain');
+            // Detect supported MIME types
+            let mimeType = 'audio/webm';
+            const supportedTypes = [
+                'audio/webm',
+                'audio/webm;codecs=opus',
+                'audio/mp4',
+                'audio/ogg'
+            ];
+
+            for (const type of supportedTypes) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    mimeType = type;
+                    break;
+                }
             }
 
+            console.log('Using MIME type:', mimeType);
+
             // Create media recorder from the audio stream
-            const mimeType = 'audio/webm';
             this.mediaRecorder = new MediaRecorder(this.recordingDestination.stream, {
                 mimeType: mimeType
             });
@@ -696,9 +723,10 @@ class SynthEngine {
 
             this.mediaRecorder.start();
             this.isRecording = true;
-            console.log('Recording started with stream:', this.recordingDestination.stream);
+            console.log('Recording started with stream');
         } catch (error) {
             console.error('Recording failed:', error);
+            this.isRecording = false;
         }
     }
 
@@ -716,12 +744,21 @@ class SynthEngine {
         return new Promise((resolve) => {
             this.mediaRecorder.onstop = () => {
                 console.log('MediaRecorder stopped, creating blob with', this.recordedChunks.length, 'chunks');
-                const audioBlob = new Blob(this.recordedChunks, { type: 'audio/webm' });
+
+                // Use the same MIME type as the recorder
+                const mimeType = this.mediaRecorder.mimeType || 'audio/webm';
+                const audioBlob = new Blob(this.recordedChunks, { type: mimeType });
                 this.recordedChunks = [];
+
+                if (audioBlob.size === 0) {
+                    console.error('Recording blob is empty!');
+                    resolve(null);
+                    return;
+                }
 
                 // Return download link
                 const url = URL.createObjectURL(audioBlob);
-                console.log('Recording saved:', url);
+                console.log('Recording saved:', url, 'Size:', audioBlob.size, 'bytes');
 
                 resolve(url);
             };
@@ -731,10 +768,10 @@ class SynthEngine {
     }
 
     /**
-     * Play metronome click at specified frequency
+     * Play metronome click at specified frequency (routes through recording if active)
      */
     playMetronomeClick(frequency = 800, duration = 0.1) {
-        if (!this.audioContext || !this.metronomeEnabled) return;
+        if (!this.audioContext) return;
 
         try {
             const now = this.audioContext.currentTime;
@@ -751,7 +788,9 @@ class SynthEngine {
             clickGain.gain.exponentialRampToValueAtTime(0.01, now + duration);
 
             click.connect(clickGain);
-            clickGain.connect(this.audioContext.destination);
+
+            // Route through master gain so it gets recorded
+            clickGain.connect(this.masterGain);
 
             click.start(now);
             click.stop(now + duration);

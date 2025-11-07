@@ -6,6 +6,7 @@
 class KeyboardController {
     constructor(synthEngine, options = {}) {
         this.synthEngine = synthEngine;
+        this.dawCore = options.dawCore || null; // For MIDI recording
 
         // Configuration
         this.octaveOffset = options.octaveOffset || 4; // C4 = MIDI 60
@@ -156,6 +157,16 @@ class KeyboardController {
 
         console.log('Key pressed:', keyCode, 'Note:', mapping.note, 'Frequency:', frequency);
 
+        // Record MIDI note if recording
+        if (this.dawCore) {
+            this.dawCore.recordMidiNote({
+                frequency: frequency,
+                noteKey: keyCode,
+                midiNote: midiNote,
+                velocity: 100
+            });
+        }
+
         // Ensure audio is initialized
         if (!this.synthEngine.audioContext) {
             console.log('Audio context not initialized on keyboard press, initializing now...');
@@ -184,6 +195,11 @@ class KeyboardController {
         event.preventDefault();
 
         this.pressedKeys.delete(keyCode);
+
+        // Record MIDI note release if recording
+        if (this.dawCore) {
+            this.dawCore.recordMidiNoteRelease(keyCode);
+        }
 
         // Release note
         this.synthEngine.releaseNote(keyCode);

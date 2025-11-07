@@ -662,15 +662,26 @@ body {
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 2px;
+    width: 4px;
     background: #f00;
     z-index: 100;
     cursor: col-resize;
     box-shadow: 0 0 8px rgba(255, 0, 0, 0.8);
+    transform: translateX(0px);
+    /* Enable GPU acceleration and smooth transforms */
+    will-change: transform;
+    pointer-events: auto;
+    left: -2px;
 }
 
 .playback-line:hover {
-    width: 3px;
-    left: -0.5px;
-    box-shadow: 0 0 12px rgba(255, 0, 0, 1);
+    width: 6px;
+    left: -3px;
+    box-shadow: 0 0 15px rgba(255, 0, 0, 1);
+}
+
+.playback-line.dragging {
+    width: 6px;
+    left: -3px;
+    box-shadow: 0 0 20px rgba(255, 100, 0, 1);
 }

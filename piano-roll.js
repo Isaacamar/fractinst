@@ -175,7 +175,7 @@ class PianoRoll {
     }
 
     /**
-     * Setup playback line dragging
+     * Setup playback line dragging with better UX
      */
     setupPlaybackLineDragging() {
         this.playbackLine = document.getElementById('playback-line');
@@ -183,9 +183,10 @@ class PianoRoll {
 
         if (!this.playbackLine || !this.gridContainer) return;
 
-        // Mouse down on playback line
+        // Mouse down on playback line - larger hit area
         this.playbackLine.addEventListener('mousedown', (e) => {
             this.isDraggingPlayhead = true;
+            this.playbackLine.classList.add('dragging');
             e.preventDefault();
             console.log('Started dragging playback line');
         });
@@ -201,12 +202,14 @@ class PianoRoll {
         document.addEventListener('mouseup', () => {
             if (this.isDraggingPlayhead) {
                 this.isDraggingPlayhead = false;
+                this.playbackLine.classList.remove('dragging');
                 console.log('Stopped dragging playback line');
             }
         });
 
         // Also allow clicking anywhere in the grid to scrub
         this.gridContainer.addEventListener('click', (e) => {
+            // Only scrub if not clicking on a grid cell (future note editing)
             if (e.target === this.gridContainer || e.target.classList.contains('piano-roll-grid')) {
                 this.scrubToMousePosition(e);
             }
@@ -236,16 +239,17 @@ class PianoRoll {
     }
 
     /**
-     * Update playback line position smoothly
+     * Update playback line position smoothly with GPU acceleration
      */
     updatePlaybackLine(beatPosition) {
         if (!this.playbackLine) return;
 
         const totalBeats = this.numBars * this.beatsPerBar;
         const percentage = (beatPosition / totalBeats) * 100;
+        const pixelPosition = (percentage / 100) * this.gridContainer.scrollWidth;
 
-        // Use transform for smoother animation
-        this.playbackLine.style.left = percentage + '%';
+        // Use transform: translateX for GPU acceleration (smoother than left property)
+        this.playbackLine.style.transform = `translateX(${pixelPosition}px)`;
     }
 
     /**

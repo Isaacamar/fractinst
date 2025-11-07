@@ -36,8 +36,13 @@ class DAWCore {
             playbackStart: [],
             playbackStop: [],
             recordingStart: [],
-            recordingStop: []
+            recordingStop: [],
+            midiNoteRecorded: []
         };
+
+        // MIDI note recording
+        this.midiNotes = []; // Array of recorded MIDI notes
+        this.isRecordingMidi = false;
 
         // Animation frame ID for the timing loop
         this.animationFrameId = null;
@@ -95,6 +100,8 @@ class DAWCore {
 
         this.isRecording = true;
         this.isRecordingLeadIn = true;
+        this.isRecordingMidi = false; // Will enable after lead-in
+        this.midiNotes = []; // Clear previous MIDI notes
         console.log('Recording started with lead-in');
         this.play(); // Start playback if not already
 
@@ -106,6 +113,7 @@ class DAWCore {
                 console.log('Starting actual audio recording');
                 this.synthEngine.startRecording();
                 this.isRecordingLeadIn = false;
+                this.isRecordingMidi = true; // Enable MIDI recording
                 this.emit('recordingActualStart');
             }, leadInDuration);
         } else {
@@ -123,22 +131,124 @@ class DAWCore {
 
         this.isRecording = false;
         this.isRecordingLeadIn = false;
+        this.isRecordingMidi = false;
 
         if (this.synthEngine) {
             const recordingPromise = this.synthEngine.stopRecording();
             if (recordingPromise && recordingPromise.then) {
                 recordingPromise.then((recordingUrl) => {
-                    this.emit('recordingStop', { recordingUrl });
+                    this.emit('recordingStop', { recordingUrl, midiNotes: this.midiNotes });
                 }).catch((error) => {
                     console.error('Error stopping recording:', error);
-                    this.emit('recordingStop');
+                    this.emit('recordingStop', { midiNotes: this.midiNotes });
                 });
             } else {
-                this.emit('recordingStop');
+                this.emit('recordingStop', { midiNotes: this.midiNotes });
             }
         } else {
-            this.emit('recordingStop');
+            this.emit('recordingStop', { midiNotes: this.midiNotes });
         }
+    }
+
+    /**
+     * Record a MIDI note event
+     */
+    recordMidiNote(noteData) {
+        if (!this.isRecordingMidi) return;
+
+        const note = {
+            frequency: noteData.frequency,
+            noteKey: noteData.noteKey,
+            startBeat: this.currentBeat,
+            velocity: noteData.velocity || 100,
+            noteOn: true
+        };
+
+        this.midiNotes.push(note);
+        this.emit('midiNoteRecorded', note);
+        console.log('MIDI note recorded:', note);
+    }
+
+    /**
+     * Record MIDI note release
+     */
+    recordMidiNoteRelease(noteKey) {
+        if (!this.isRecordingMidi) return;
+
+        // Find the most recent note with this key
+        for (let i = this.midiNotes.length - 1; i >= 0; i--) {
+            if (this.midiNotes[i].noteKey === noteKey && this.midiNotes[i].noteOn) {
+                const duration = this.currentBeat - this.midiNotes[i].startBeat;
+                this.midiNotes[i].duration = Math.max(0.01, duration); // Minimum 0.01 beats
+                this.midiNotes[i].noteOn = false;
+                console.log('MIDI note release:', noteKey, 'Duration:', duration);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Get recorded MIDI notes
+     */
+    getMidiNotes() {
+        return this.midiNotes;
+    }
+
+    /**
+     * Clear MIDI notes
+     */
+    clearMidiNotes() {
+        this.midiNotes = [];
+    }
+
+    /**
+     * Set MIDI notes (for loading/playback)
+     */
+    setMidiNotes(notes) {
+        this.midiNotes = notes || [];
+    }
+
+    /**
+     * Playback recorded MIDI notes
+     * Triggers notes at appropriate beat positions during playback
+     */
+    playbackMidiNotes() {
+        if (!this.synthEngine || this.midiNotes.length === 0 || !this.isPlaying) return;
+
+        // Check each recorded note to see if it should be triggered
+        this.midiNotes.forEach((note) => {
+            const noteStartThreshold = 0.05; // Trigger within 50ms of beat position
+
+            // Check if we've just reached this note's start time
+            if (
+                this.currentBeat >= note.startBeat &&
+                this.currentBeat < note.startBeat + noteStartThreshold &&
+                !note.isPlaying
+            ) {
+                // Start playing the note
+                this.synthEngine.playNote(note.frequency, `midi-${note.noteKey}`);
+                note.isPlaying = true;
+            }
+
+            // Check if note duration has elapsed
+            if (
+                note.isPlaying &&
+                this.currentBeat >= (note.startBeat + note.duration)
+            ) {
+                // Release the note
+                this.synthEngine.releaseNote(`midi-${note.noteKey}`);
+                note.isPlaying = false;
+            }
+        });
+    }
+
+    /**
+     * Reset MIDI note playback state
+     */
+    resetMidiPlaybackState() {
+        this.midiNotes.forEach((note) => {
+            note.isPlaying = false;
+        });
     }
 
     /**
@@ -200,10 +310,16 @@ class DAWCore {
             if (this.currentBeat >= this.loopLengthBeats) {
                 this.currentBeat = 0;
                 this.currentBar = 0;
+                this.resetMidiPlaybackState(); // Reset MIDI playback for next loop
                 this.emit('loopComplete');
             } else {
                 // Update bar position
                 this.currentBar = Math.floor(this.currentBeat / this.beatsPerBar);
+            }
+
+            // Playback MIDI notes if we have any
+            if (!this.isRecordingMidi) {
+                this.playbackMidiNotes();
             }
 
             // Emit events on beat/bar changes
