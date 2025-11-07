@@ -66,15 +66,21 @@ class DAWCore {
 
         // Create MIDI part for note playback
         this.midiPart = new Tone.Part((time, note) => {
-            if (this.synthEngine) {
-                this.synthEngine.playNote(note.frequency, `midi-${note.noteKey}`);
-                // Schedule note release
-                Tone.Transport.scheduleOnce(() => {
-                    if (this.synthEngine) {
-                        this.synthEngine.releaseNote(`midi-${note.noteKey}`);
-                    }
-                }, time + Tone.Time(note.duration, 'quarters').toSeconds());
-            }
+            if (!this.synthEngine) return;
+
+            const noteId = `midi-${note.noteKey}`;
+
+            // Play the note
+            this.synthEngine.playNote(note.frequency, noteId);
+
+            // Schedule note release at the appropriate time
+            const releaseDuration = Tone.Time(note.duration, 'quarters').toSeconds();
+            Tone.Transport.scheduleOnce(() => {
+                if (this.synthEngine) {
+                    this.synthEngine.releaseNote(noteId);
+                }
+            }, Tone.now() + releaseDuration);
+
         }, []);
 
         // Set loop length
