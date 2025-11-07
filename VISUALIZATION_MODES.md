@@ -1,238 +1,241 @@
-# 🎨 Visualization Modes - Live Synth DAW
+# 🌊 Visualization Modes - Cymatics-Inspired Geometric Patterns
 
 ## Overview
 
-The oscilloscope now features 3 distinct real-time visualization modes that respond dynamically to the audio you're producing. Toggle between them using the buttons in the WAVEFORM module header.
+The oscilloscope features **3 mathematical visualization modes** inspired by **cymatics** (the visible sound wave phenomenon where vibrations create geometric patterns in sand, liquid, etc.).
+
+Each mode displays different aspects of your audio using elegant, geometric patterns. All are **monochrome** (white on black) and based on **pure wave mathematics**.
+
+**Toggle modes:** Click buttons in WAVEFORM header: **[WAVE]** **[GRID]** **[TRACE]**
 
 ---
 
-## Mode 1: BARS (Original)
+## Mode 1: WAVE - Standing Wave Interference
 
-**What it shows:** Traditional oscilloscope vertical standing wave
+**What it shows:** Resonance patterns radiating from center - like watching ripples interfere with each other
 
-**Visual style:**
+**Visual appearance:**
 ```
-        |▓|
-     |▓|▓|▓|▓|
-  |▓|▓|▓|▓|▓|▓|▓|
------------+-----------
-  |▓|▓|▓|▓|▓|▓|▓|
-     |▓|▓|▓|▓|
-        |▓|
+Concentric circles deform and oscillate
+Radial spokes pulse outward
+Creates living, breathing interference patterns
 ```
 
-**How it works:**
-- Splits audio buffer into 128 frequency bands
-- Each band renders as a vertical bar
-- Height = amplitude of that frequency
-- Centered on screen with dashed center line
-- Green color (#0f0) for classic oscilloscope look
+**How it works mathematically:**
+```javascript
+// Concentric circles with wave deformation
+wave1 = sin(angle × 3 + time)
+wave2 = sin(angle × 5 - time × 0.7)
+deformation = (wave1 + wave2) × amplitude
+
+// Radial lines oscillate at harmonic intervals
+8 spokes from center
+Each pulses independently
+```
+
+**What you're seeing:**
+- **12 concentric rings** - represent frequency bands
+- **8 radial spokes** - harmonic overtones
+- **Deformation amount** - audio amplitude and harmonic content
+- **Ring distortion** - how frequencies interfere constructively/destructively
+
+**Best for:**
+- Understanding harmonic resonance
+- Seeing standing wave patterns
+- Beautiful, meditative viewing
+- Cymatics-accurate representation
+
+**Responsive to:**
+- Louder notes → rings oscillate more
+- Different frequencies → different pattern shapes
+- Multiple harmonics → complex interference patterns
+- Filter sweeps → visible deformation changes
+
+---
+
+## Mode 2: GRID - Hexagonal Lattice Deformation
+
+**What it shows:** Geometric grid that deforms based on frequency content - like a membrane responding to vibrations
+
+**Visual appearance:**
+```
+Regular hexagonal pattern
+Cells ripple outward from center
+Opacity varies by local frequency
+Creates organic, breathing lattice
+```
+
+**How it works mathematically:**
+```javascript
+// Hexagonal grid with two types of deformation
+ripple = sin(distanceFromCenter × 0.01 - time)
+resonance = sin(angle × 6 + time) × amplitude
+cellOpacity = frequencyData / 256
+
+// Each cell influenced by:
+- Its distance from center
+- Local frequency content
+- Global amplitude
+```
+
+**What you're seeing:**
+- **Hexagonal lattice** - geometric reference structure
+- **Ripple waves** - propagate outward from center
+- **Cell brightness** - frequency content at that position
+- **Resonant deformation** - harmonic influence on geometry
+
+**Best for:**
+- Clean, geometric aesthetic
+- Understanding frequency distribution
+- Watching ripple propagation
+- Professional-looking patterns
+
+**Responsive to:**
+- Bass → brightens bottom portion
+- Treble → brightens upper portion
+- Amplitude peaks → visible ripple bursts
+- Smooth tones → smooth deformation
+
+---
+
+## Mode 3: TRACE - Oscillating Waveform Lines
+
+**What it shows:** Waveform as flowing line with harmonic overtones overlaid
+
+**Visual appearance:**
+```
+Three transparent waveform lines
+Each represents harmonic (1x, 2x, 3x frequency)
+Base waveform oscillates with audio
+Upper harmonics fade progressively
+```
+
+**How it works mathematically:**
+```javascript
+// For each harmonic layer (1, 2, 3)
+baseY = centerY + audioSample × height × 0.15
+oscillation = sin(time × harmonic + i × 0.02) × harmonic × 15
+y = baseY + oscillation
+
+// Opacity decreases per harmonic
+opacity = 1.0 / harmonic
+```
+
+**What you're seeing:**
+- **3 overlapping waveforms** - fundamental + 2nd + 3rd harmonics
+- **Horizontal spread** - audio buffer time domain
+- **Vertical oscillation** - amplitude and harmonic modulation
+- **Center baseline** - 0 amplitude reference line
 
 **Best for:**
 - Classic frequency analysis
-- Understanding waveform shape
-- Seeing individual harmonics
+- Understanding harmonics visually
+- Seeing waveform evolution over time
 - Technical/analytical listening
 
 **Responsive to:**
-- Higher notes = taller bars on sides
-- Louder = taller bars overall
-- Different waveforms = different bar patterns
-
----
-
-## Mode 2: SPECTRUM (New - Radial Frequency Analyzer)
-
-**What it shows:** Circular frequency spectrum with colors
-
-**Visual style:**
-```
-        🌈
-      ╭─────╮
-    ╱  Rainbow  ╲
-   │  frequency  │
-   │  spectrum   │
-   ╲  in circle  ╱
-      ╰─────╯
-
-      (Rotating!)
-```
-
-**How it works:**
-- Maps 64 frequency bands to circle around center point
-- Each frequency is a different angle
-- Low frequencies = red, Mid = green, High = blue (rainbow spectrum)
-- Amplitude controls bar length radiating outward
-- Rings show amplitude scale reference
-- Continuous rotation animation for visual interest
-- White dot in center
-
-**Best for:**
-- Beautiful, artistic visualization
-- Seeing overall frequency balance
-- Explaining spectral content to others
-- Visual feedback while sound designing
-- Looking cool during live performance
-
-**Responsive to:**
-- Bass-heavy = longer bars on red side
-- Treble-heavy = longer bars on blue side
-- Balanced sound = even ring pattern
-- Dynamics = breathing/pulsing effect
-
----
-
-## Mode 3: PARTICLE (New - Physics-Based Audio Visualization)
-
-**What it shows:** Audio-driven particle system with gravity
-
-**Visual style:**
-```
-              ✨
-           ✨   ✨
-        ✨   ◉   ✨
-           ✨   ✨
-              ✨
-
-(Particles burst outward, then fall!)
-```
-
-**How it works:**
-- Calculates average audio amplitude each frame
-- Emits proportional number of particles (more audio = more particles)
-- Each particle:
-  - Starts at center (white circle)
-  - Moves in random direction with random speed
-  - Has random color (full HSL spectrum)
-  - Experiences gravity (falls downward)
-  - Has air resistance (velocity *= 0.98 each frame)
-  - Fades out over time (255 -> 0 alpha)
-  - Dies when life reaches 0
-- Quiet = few particles, Loud = many particles
-
-**Best for:**
-- Visual representation of dynamics
-- Energy/intensity feedback
-- Hypnotic, mesmerizing effect
-- Understanding volume envelope
-- Creative/experimental sessions
-
-**Responsive to:**
-- Loud peak = particle burst
-- Sustained notes = continuous stream
-- Quiet passages = few/no particles
-- Quick transients = sharp bursts
-
----
-
-## How to Use
-
-### Switching Modes
-
-In the **WAVEFORM** module (top-left):
-```
-[WAVEFORM] [BARS] [SPEC] [PART]
-           ^^^^^ (active, highlighted)
-```
-
-Click any button to switch modes instantly.
-
-### Real-time Switching
-
-You can switch modes while playing/recording! The visualization updates immediately.
-
-### Performance Impact
-
-All modes are optimized:
-- **BARS**: Minimal CPU (simple math)
-- **SPECTRUM**: Low CPU (64 bands, some rotation math)
-- **PARTICLE**: Medium CPU (particle physics, but managed pool)
-
-Even PARTICLE mode won't impact your audio—particle updates happen in render phase only.
+- Louder notes → taller oscillations
+- Richer sounds → more visible upper harmonics
+- Pure sine → tight, simple wave
+- Complex timbres → complex interference patterns
 
 ---
 
 ## Technical Details
 
-### Particle System (Mode 3)
+### Wave Mathematics
 
-Particle properties:
+All visualizations use **sine and cosine wave equations**:
+
 ```javascript
-{
-  x, y: position
-  vx, vy: velocity
-  life: 255 -> 0 (alpha)
-  hue: 0-360 (HSL color)
-  size: 2-5px
-}
+// Basic interference pattern
+wave = sin(angle × frequency + time × speed) × amplitude
+
+// Spatial deformation
+deformed_position = position + wave_contribution
+
+// Harmonic resonance
+total = Σ(sin(angle × n × frequency) for each harmonic)
 ```
 
-Physics:
-- Velocity applied every frame: `x += vx`, `y += vy`
-- Gravity: `vy += 0.1` (accelerates downward)
-- Air resistance: `vx *= 0.98` (slows horizontal movement)
-- Emission rate: `Math.floor(avgAmplitude * 20)` particles per frame
+### Cymatics Connection
 
-Emission is continuous while audio is loud—no discrete "explosions," just responsive flow.
+These patterns mirror real cymatics phenomena:
 
-### Spectrum (Mode 2)
+1. **Concentric rings** (WAVE mode)
+   - Same patterns appear in sand on vibrating plates
+   - Frequency determines ring spacing and density
 
-Color mapping:
-```javascript
-hue = (frequencyIndex / 64) * 360
-// 0Hz -> red (0°)
-// 32Hz -> green (180°)
-// 64Hz -> blue (360°/0°)
-```
+2. **Hexagonal symmetry** (GRID mode)
+   - Natural pattern that emerges from resonance
+   - Six-fold symmetry common in standing waves
+   - Cells brighten at resonant frequencies
 
-Rotation:
-```javascript
-angle = (sliceAngle * i) + (Date.now() * 0.0001)
-```
+3. **Harmonic layering** (TRACE mode)
+   - Shows fundamental + overtones simultaneously
+   - How rich tones contain multiple frequencies
+   - Visual representation of timbre
 
-This creates continuous smooth rotation at ~36° per second.
+### Performance
 
----
+All modes are **optimized**:
+- WAVE: Fast (sine waves, simple math)
+- GRID: Medium (hexagon drawing, ripple propagation)
+- TRACE: Fast (line drawing, harmonic overlays)
 
-## Tips for Best Results
-
-### BARS mode
-- Zoom in on specific frequency ranges
-- Watch how different waveforms look different
-- Notice harmonics shimmer
-
-### SPECTRUM mode
-- Turn on metronome to see beat correlation
-- Notice bass frequencies on red side
-- See synthesis effects change distribution
-
-### PARTICLE mode
-- Record a drum pattern and watch particles respond
-- Use with filter sweeps—particles surge as cutoff opens
-- Great with distortion—see energy increase
+No impact on audio quality or latency.
 
 ---
 
-## Future Enhancements
+## Tips for Using These Visualizations
 
-Possible additions:
-- Mode 4: Waveform trace (oscilloscope XY mode)
-- Mode 5: Spectrogram (frequency over time)
-- Mode 6: 3D visualization (WebGL)
-- Customizable colors per mode
-- Particle trail effects
-- Preset combinations
+### With WAVE mode
+- Play a pure sine wave - see perfect circles
+- Add a second sine wave - watch interference patterns form
+- Use filter envelope - see rings grow/shrink
+- Play chords - see complex harmonic resonance
+
+### With GRID mode
+- Record a drum beat - watch ripples radiate with each hit
+- Sweep a filter - observe the deformation wave
+- Use distortion - cells brighten unpredictably
+- Play pads - smooth, flowing deformation
+
+### With TRACE mode
+- Look for the "shape" of your sound
+- Simple tones = simple waveforms
+- Harsh/distorted tones = complex oscillations
+- Filter resonance = visible peaks in trace
+
+### General Tips
+- **Switch modes while playing** - all respond in real-time
+- **Watch the bass** - usually dominates visuals
+- **Notice treble response** - more subtle, higher frequency
+- **Dynamics** - see how amplitude changes affect patterns
 
 ---
 
-## Visual Comparison
+## Comparison
 
-| Mode | CPU | Beauty | Technical | Responsive |
-|------|-----|--------|-----------|------------|
-| BARS | 🟢 Low | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
-| SPECTRUM | 🟢 Low | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
-| PARTICLE | 🟡 Medium | ⭐⭐⭐ | ⭐ | ⭐⭐⭐ |
+| Mode | Pattern Type | Best For | Complexity |
+|------|-------------|----------|-----------|
+| **WAVE** | Concentric interference | Harmonic analysis | Elegant |
+| **GRID** | Hexagonal ripples | Frequency distribution | Clean |
+| **TRACE** | Harmonic layering | Waveform shape | Technical |
 
 ---
 
-Now go make some sounds and watch them visualize in three different ways! 🎵✨
+## Mathematical Foundation
+
+These visualizations aren't arbitrary - they're based on **physics**:
+
+- **Wave interference** - same equations that describe light, sound, water waves
+- **Harmonic resonance** - overtone series and Fourier analysis
+- **Geometric symmetry** - natural patterns that emerge from harmonic mathematics
+- **Amplitude modulation** - direct relationship between sound intensity and visual deformation
+
+The patterns you see are **mathematical truth made visible** - a real-time window into the frequency and harmonic structure of your sound.
+
+---
+
+Now go create sounds and watch the geometry respond! 🌊✨
