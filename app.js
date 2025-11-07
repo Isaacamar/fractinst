@@ -391,6 +391,10 @@ dawCore.on('recordingStop', (data) => {
         if (data.midiNotes && data.midiNotes.length > 0) {
             console.log('MIDI notes recorded:', data.midiNotes.length, 'notes');
             console.log('MIDI data:', data.midiNotes);
+
+            // Update the MIDI part for playback
+            dawCore.updateMidiPart();
+
             // Display MIDI notes on piano roll if it exists
             if (pianoRoll) {
                 pianoRoll.displayMidiNotes(data.midiNotes);
