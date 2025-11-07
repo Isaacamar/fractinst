@@ -169,6 +169,7 @@ class DAWCore {
         // Start Tone.Transport
         Tone.Transport.start();
         this.isPlaying = true;
+        console.log('Playback started - Tone.Transport running');
         this.emit('playbackStart');
     }
 
@@ -186,6 +187,7 @@ class DAWCore {
         this.currentBar = 0;
         this.lastEmittedBeat = -1;
 
+        console.log('Playback stopped - Tone.Transport paused');
         this.emit('playbackStop');
     }
 
@@ -447,5 +449,22 @@ class DAWCore {
             formattedTime: this.getFormattedTime(),
             progress: this.getProgress()
         };
+    }
+
+    /**
+     * Debug method - log MIDI part information
+     */
+    debugMidiPart() {
+        console.group('🎹 MIDI Part Debug Info');
+        console.log('Total MIDI Notes:', this.midiNotes.length);
+        console.log('MIDI Notes:', this.midiNotes);
+        console.log('Tone.Transport Running:', Tone.Transport.state === 'started');
+        console.log('Tone.Transport Position:', Tone.Transport.position);
+        console.log('Tone.Transport BPM:', Tone.Transport.bpm.value);
+        console.log('MIDI Part Loop:', this.midiPart?.loop);
+        console.log('MIDI Part Loop End:', this.midiPart?.loopEnd);
+        console.log('Current Beat:', this.currentBeat.toFixed(2));
+        console.log('Current Bar:', this.currentBar);
+        console.groupEnd();
     }
 }
