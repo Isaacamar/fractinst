@@ -1,101 +1,201 @@
-# FractInst - Fractal Synthesizer
+# Live Synth DAW
 
-A real-time web-based synthesizer that uses fractal mathematics to modulate and generate unique audio waveforms. Watch your sounds evolve in real-time through an integrated oscilloscope visualizer.
+A professional-grade browser-based synthesizer and Digital Audio Workstation (DAW) built with the Web Audio API. Features real-time sound design, polyphonic synthesis, recording, and an intuitive QWERTY keyboard interface.
 
 ## Features
 
-### Wave Types
-- **Sine Wave** - Smooth, pure tone
-- **Square Wave** - Rich in odd harmonics
-- **Sawtooth Wave** - Bright, full spectrum
-- **Triangle Wave** - Mellow harmonics
+### Sound Design
+- **4 Oscillator Types**: Sine, Square, Sawtooth, Triangle
+- **Advanced Filters**: Biquad filter with cutoff, resonance, and envelope modulation
+- **Filter Envelope**: Separate ADSR control for dynamic filter sweeps
+- **LFO System**: Global Low-Frequency Oscillator with 4 waveform types and 3 modulation targets
+  - Cutoff modulation
+  - Amplitude modulation (tremolo)
+  - Pitch modulation (vibrato)
+- **Unison Mode**: Multi-voice layering with detuning for fat, thick sounds
+- **Noise Generator**: Blend white noise with oscillators
+- **Distortion**: Soft-clip waveshaper with tone control
+- **Master Volume**: Overall output level control
 
-### Fractal Modulation Engine
-The synth uses various fractal algorithms to continuously modulate audio parameters:
+### ADSR Envelopes
+- **Amplitude Envelope**: Shape note attack, decay, sustain, and release
+- **Filter Envelope**: Modulate filter cutoff over time
+- Independent control for each envelope stage (0-1000ms or more)
 
-1. **Mandelbrot Set** - Smooth, evolving modulation patterns
-2. **Julia Set** - Complex, swirling dynamics
-3. **Lorenz Attractor** - Chaotic butterfly pattern variations
-4. **Iterated Function System (IFS)** - Fractal flame-like transformations
+### DAW Features
+- **BPM-Synchronized Timing**: Adjustable tempo from 20-300 BPM
+- **Loop System**: 4-bar looping with beat/bar tracking
+- **Recording**: Capture audio with 4-beat lead-in metronome
+- **Metronome**: Audible clicks with lead-in during recording
+- **Transport Controls**: Play, Stop, Record buttons
+- **Time Display**: Real-time bar:beat:fraction display
+
+### Keyboard & Control
+- **QWERTY Layout**: Two octaves of piano keys
+  - Q-U: First octave white keys (C-B)
+  - 1-5: First octave black keys (C#-A#)
+  - A-J: Second octave white keys (C-B)
+  - 6-0: Second octave black keys (C#-A#)
+- **Octave Controls**: Shift octave up/down
+- **Interactive Knobs**: Real-time parameter adjustment
+- **Visual Feedback**: Active note display and recording indicators
 
 ### Real-Time Visualization
-- **Oscilloscope View** - See the waveform as it's generated
-- **Frequency Spectrum** - Visualize the harmonic content
-- **Grid Overlay** - Reference lines for waveform analysis
-
-### Controls
-- **Frequency** - Base pitch (50-2000 Hz)
-- **Amplitude** - Volume control
-- **Detune** - Fine pitch adjustment in cents
-- **Fractal Intensity** - How strongly fractals affect the sound
-- **Fractal Speed** - Rate of fractal evolution
-- **LFO (Low Frequency Oscillator)** - Additional modulation with adjustable rate and depth
+- **Oscilloscope**: Standing wave display with vertical bars
+- **Waveform Grid**: Reference grid for visual analysis
+- **Recording Indicator**:
+  - Yellow pulse during lead-in metronome
+  - Red blink during active recording
+- **Active Notes Counter**: See how many voices are playing
 
 ## How It Works
 
-### Fractal-Based Modulation
-The fractal engine continuously generates values based on mathematical fractals. These values are mapped to:
-- **Frequency Detune** - Creating evolving pitch variations
-- **Amplitude Modulation** - Adding dynamic texture
-
-This creates sounds that are never static - they continuously evolve in complex, self-similar patterns.
-
-### Audio Pipeline
+### Audio Signal Chain
 ```
-Fractal Engine → Modulation Signal
-                         ↓
-LFO → Frequency Modulation → Oscillator → Gain → Analyser → Output
-                         ↑
-                   Fractal Detune
+┌─────────────────────────────────────────┐
+│   Oscillators (Primary + Unison)        │
+│   + Noise Generator                     │
+└──────────────┬──────────────────────────┘
+               ↓
+       ┌───────────────┐
+       │    Mixer      │
+       └───────┬───────┘
+               ↓
+       ┌───────────────┐
+       │ Distortion    │
+       │ (Optional)    │
+       └───────┬───────┘
+               ↓
+       ┌───────────────┐
+       │ Biquad Filter │
+       │ + Envelope    │
+       └───────┬───────┘
+               ↓
+       ┌───────────────┐
+       │  Gain Env     │
+       │  (ADSR)       │
+       └───────┬───────┘
+               ↓
+       ┌───────────────┐
+       │ Master Gain   │
+       └───────┬───────┘
+               ↓
+      ┌────────┴────────┐
+      ↓                 ↓
+   Speaker          Recording
+                    (WebM)
 ```
 
-## Usage
+### LFO Modulation
+The LFO (Low-Frequency Oscillator) continuously modulates chosen targets:
+- **Cutoff**: Filter sweeps for evolving timbres
+- **Amplitude**: Tremolo effect for rhythmic movement
+- **Pitch**: Vibrato for natural expression
 
+### Recording Pipeline
+1. Click **Record** → Initializes audio context
+2. **4-beat Lead-in** → Metronome clicks help you sync
+3. **Recording Starts** → Audio captured to WebM file
+4. **Click Record again** → Saves file, logs download URL
+5. **Manual download** → Access the blob URL from console
+
+## Getting Started
+
+### Basic Usage
 1. Open `index.html` in a modern web browser
-2. Click **Play** to start the synthesizer (requires user interaction due to browser audio policies)
-3. Experiment with different wave types and fractal settings
-4. Watch the oscilloscope to see how fractals transform the waveform
-5. Adjust parameters in real-time while playing
+2. **Click anywhere** to initialize audio (browser requirement)
+3. Press **Q** to play middle C, or use any QWERTY/ZXCV keys
+4. Adjust knobs for different sounds
+5. Click **Play** to start BPM-synchronized timing
+6. Click **Record** for lead-in metronome + recording
 
-## Browser Compatibility
+### Keyboard Controls
+- **QWERTY row**: C, D, E, F, G, A, B (white keys)
+- **Number row**: C#, D#, F#, G#, A# (black keys)
+- **ASDFGH row**: Next octave starting at C
+- **Octave +/-**: Change octave up/down
+- **Metronome**: Toggle click sound on/off
 
-Works best in:
-- Chrome/Edge (Chromium)
-- Firefox
-- Safari
+### Parameter Tweaking
+All parameters are real-time controllable via knobs:
+- **Oscillator**: Waveform selection + master volume
+- **Amplitude**: Attack, Decay, Sustain, Release
+- **Filter**: Cutoff, Resonance, Type (Low/High/Band)
+- **Filter Env**: Envelope attack/decay/sustain/release + amount
+- **LFO**: Rate, Depth, Waveform, Target
+- **Distortion**: Amount, Tone
+- **Unison**: Detune amount, Enable/Disable
+- **Noise**: Mix level
 
-Requires Web Audio API support.
+## Browser Support
 
-## Ideas for Expansion
+Works in all modern browsers with Web Audio API:
+- ✅ Chrome/Edge (Recommended)
+- ✅ Firefox
+- ✅ Safari 14+
+- ✅ Mobile browsers (with touch knob control)
 
-1. **Additional Fractal Types**
-   - Barnsley Fern
-   - Sierpinski Triangle
-   - Koch Curve audio mapping
+## Technical Architecture
 
-2. **More Wave Manipulation**
-   - Phase modulation
-   - Wave folding
-   - Bitcrushing effects
+### Core Modules
 
-3. **Advanced Features**
-   - Multiple oscillators with fractal phase relationships
-   - Fractal-based filter sweeps
-   - Preset system for fractal combinations
-   - MIDI input support
-   - Recording/export functionality
+**audio-engine.js** (760+ lines)
+- Web Audio API synthesis engine
+- Per-note oscillators, filters, envelopes
+- LFO modulation routing
+- Recording via MediaRecorder
+- Metronome click generation
 
-4. **Visual Enhancements**
-   - 3D oscilloscope visualization
-   - Fractal visualization alongside audio
-   - Color mapping based on frequency content
+**daw-core.js** (260+ lines)
+- BPM timing and beat synchronization
+- Loop management
+- Recording state machine with lead-in
+- Event system for transport control
 
-## Technical Notes
+**keyboard-controller.js** (291 lines)
+- QWERTY/ZXCV keyboard mapping
+- MIDI note conversion
+- Visual key press feedback
+- Octave offset management
+- Auto-initializes audio on first key press
 
-- Uses Web Audio API for low-latency audio synthesis
-- Fractal calculations are optimized to run at 60 FPS without blocking audio thread
-- Canvas-based rendering for smooth real-time visualization
-- All processing happens in-browser, no server required
+**oscilloscope.js** (121 lines)
+- Canvas-based real-time visualization
+- Standing wave bar display
+- Waveform grid overlay
+- Responsive canvas resizing
 
-Enjoy exploring the fractal soundscape! 🎵🌀
+**knob.js** (115 lines)
+- Interactive rotary control widget
+- Mouse drag control
+- Parameter range mapping
+- Visual feedback during adjustment
 
+**app.js** (391 lines)
+- Main application orchestration
+- UI event binding
+- Parameter synchronization
+- Recording indicator management
+
+## Roadmap
+
+### Potential Features
+- Presets/Recall system
+- Arpeggiator
+- MIDI input support
+- Delay/Reverb effects
+- Multiple synth voices with independent routing
+- Sample playback and manipulation
+- Drum machine integration
+- External instrument control via MIDI
+
+### Performance Improvements
+- Multi-threaded audio processing via Web Workers
+- GPU-accelerated visualization
+- Optimized parameter automation recording
+
+## Credits
+
+Built with Web Audio API and modern JavaScript ES6+.
+
+🎵 A live synthesizer for modern music production in the browser.
