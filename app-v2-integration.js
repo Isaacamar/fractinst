@@ -10,6 +10,10 @@ const oscilloscope = new ElegantOscilloscope('oscilloscope');
 // Keep existing DAW core (it should work with the new engine)
 const dawCore = new DAWCore();
 
+// Initialize onboarding
+const onboarding = new Onboarding();
+onboarding.init();
+
 // Declare pianoRoll variable
 let pianoRoll = null;
 
@@ -93,7 +97,33 @@ function initializeBaseModules() {
     setTimeout(() => {
         initializeKnobs();
         attachBaseModuleEventListeners();
+        initializeDefaultSettings();
     }, 100);
+}
+
+/**
+ * Initialize UI to match default audio engine settings
+ */
+function initializeDefaultSettings() {
+    // Set sine wave button as active (default waveform)
+    const controlsArea = document.querySelector('.controls-area');
+    if (controlsArea) {
+        const sineBtn = controlsArea.querySelector('.wave-btn[data-wave="sine"]');
+        if (sineBtn) {
+            const waveButtons = controlsArea.querySelectorAll('.wave-btn');
+            waveButtons.forEach(b => b.classList.remove('active'));
+            sineBtn.classList.add('active');
+        }
+        
+        // Set distortion bypass button as active (distortion is bypassed by default)
+        const distortionBypassBtn = controlsArea.querySelector('#distortion-bypass-btn');
+        if (distortionBypassBtn) {
+            distortionBypassBtn.dataset.bypassed = 'true';
+            distortionBypassBtn.textContent = 'DISTORTION: OFF';
+            distortionBypassBtn.classList.add('active');
+            synthEngine.setDistortionBypass(true);
+        }
+    }
 }
 
 // Attach event listeners
@@ -246,14 +276,14 @@ const knobConfigs = {
         min: 20,
         max: 20000,
         step: 10,
-        value: 5000,
+        value: 12000, // Match audio engine default
         formatValue: (v) => Math.round(v) + 'Hz'
     },
     'filter-resonance-knob': {
         min: 0.1,
         max: 20,
         step: 0.1,
-        value: 1,
+        value: 1.5, // Match audio engine default
         formatValue: (v) => v.toFixed(1)
     },
     'filter-env-atk-knob': {
@@ -619,4 +649,13 @@ oscilloscope.start(() => {
 // Initialization
 updateOctaveDisplay();
 console.log('V2 Low-Latency Audio Engine with WebGL Oscilloscope initialized!');
+
+// Start onboarding on page load (if not seen before)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => onboarding.start(), 500); // Small delay to let page render
+    });
+} else {
+    setTimeout(() => onboarding.start(), 500);
+}
 

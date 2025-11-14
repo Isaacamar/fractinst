@@ -24,9 +24,9 @@ class LowLatencySynthEngine {
             reverb: null
         };
         
-        // Effect bypass states
+        // Effect bypass states - distortion off by default for cleaner sound
         this.effectBypassed = {
-            distortion: false,
+            distortion: true, // Bypassed by default
             compressor: false,
             chorus: false,
             delay: false,
@@ -49,9 +49,9 @@ class LowLatencySynthEngine {
             sustainLevel: 0.7,
             releaseTime: 0.2,
             
-            // Filter
-            filterCutoff: 5000,
-            filterResonance: 1,
+            // Filter - better defaults for a brighter, more musical sound
+            filterCutoff: 12000, // Higher cutoff for brighter sound
+            filterResonance: 1.5, // Slight resonance for more character
             filterType: 'lowpass',
             
             // Effects
