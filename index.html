@@ -19,7 +19,7 @@
                     <div class="label">BPM</div>
                     <input id="bpm-input" type="number" min="20" max="300" value="120" class="bpm-input">
                 </div>
-                <div class="loop-info">
+                <div class="loop-inafo">
                     <div class="label">LOOP</div>
                     <div id="loop-display" class="value">4 bars</div>
                 </div>
@@ -45,6 +45,7 @@
                 <button id="octave-down-btn" class="octave-btn">-OCT</button>
                 <div id="octave-display" class="octave-value">C4</div>
                 <button id="octave-up-btn" class="octave-btn">+OCT</button>
+                <button id="keyboard-help-btn" class="keyboard-help-btn" title="Keyboard Help">⌨</button>
             </div>
         </div>
 
@@ -56,12 +57,6 @@
                 <div class="module oscilloscope-module">
                     <div class="module-header">
                         <span class="module-title">WAVEFORM</span>
-                        <div class="visualization-toggles">
-                            <button class="viz-toggle active" data-mode="bars" title="Vertical bars">BARS</button>
-                            <button class="viz-toggle" data-mode="wave" title="Cymatics waves">WAVE</button>
-                            <button class="viz-toggle" data-mode="grid" title="Geometric grid">GRID</button>
-                            <button class="viz-toggle" data-mode="trace" title="Oscillating trace">TRACE</button>
-                        </div>
                     </div>
                     <div class="oscilloscope-container">
                         <canvas id="oscilloscope"></canvas>
@@ -74,236 +69,15 @@
                         <span class="module-title">INFO</span>
                     </div>
                     <div class="module-content">
-                        <p class="info-label">QWERTY / ASDFGH</p>
+                        <p class="info-label">A-K Keys (Piano)</p>
                         <p class="active-notes">Notes: <span id="active-notes-count">0</span></p>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Side: Control Modules in Columns -->
+            <!-- Right Side: Control Modules in 5-Column Grid -->
             <div class="controls-area">
-                <!-- Column 1: Sound Sources -->
-                <div class="control-column">
-                    <!-- Oscillator Module -->
-                    <div class="module">
-                        <div class="module-header">
-                            <span class="module-title">OSCILLATOR</span>
-                        </div>
-                        <div class="module-content">
-                            <div class="wave-selector">
-                                <button class="wave-btn active" data-wave="sine">SINE</button>
-                                <button class="wave-btn" data-wave="square">SQR</button>
-                                <button class="wave-btn" data-wave="sawtooth">SAW</button>
-                                <button class="wave-btn" data-wave="triangle">TRI</button>
-                            </div>
-                            <div class="knobs-row">
-                                <div class="knob-container">
-                                    <div class="knob" id="master-volume-knob" data-param="master-volume">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="master-volume-value">50</div>
-                                        <div class="knob-label">VOL</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Unison & Effects Module -->
-                    <div class="module">
-                        <div class="module-header">
-                            <span class="module-title">VOICE</span>
-                        </div>
-                        <div class="module-content">
-                            <div class="unison-toggle">
-                                <button id="unison-toggle-btn" class="toggle-btn">UNISON: OFF</button>
-                            </div>
-                            <div class="knobs-row">
-                                <div class="knob-container">
-                                    <div class="knob" id="unison-detune-knob" data-param="unison-detune">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="unison-detune-value">5</div>
-                                        <div class="knob-label">DTUNE</div>
-                                    </div>
-                                </div>
-                                <div class="knob-container">
-                                    <div class="knob" id="noise-amount-knob" data-param="noise-amount">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="noise-amount-value">0</div>
-                                        <div class="knob-label">NOISE</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Column 2: Envelopes -->
-                <div class="control-column">
-                    <!-- Amplitude ADSR Envelope Module -->
-                    <div class="module">
-                        <div class="module-header">
-                            <span class="module-title">AMPLITUDE</span>
-                        </div>
-                        <div class="module-content">
-                            <div class="knobs-row">
-                                <div class="knob-container">
-                                    <div class="knob" id="attack-knob" data-param="attack">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="attack-value">10</div>
-                                        <div class="knob-label">ATK</div>
-                                    </div>
-                                </div>
-                                <div class="knob-container">
-                                    <div class="knob" id="decay-knob" data-param="decay">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="decay-value">100</div>
-                                        <div class="knob-label">DEC</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="knobs-row">
-                                <div class="knob-container">
-                                    <div class="knob" id="sustain-knob" data-param="sustain">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="sustain-value">70</div>
-                                        <div class="knob-label">SUS</div>
-                                    </div>
-                                </div>
-                                <div class="knob-container">
-                                    <div class="knob" id="release-knob" data-param="release">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="release-value">200</div>
-                                        <div class="knob-label">REL</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filter Envelope Module -->
-                    <div class="module">
-                        <div class="module-header">
-                            <span class="module-title">FILTER ENV</span>
-                        </div>
-                        <div class="module-content">
-                            <div class="knobs-row">
-                                <div class="knob-container">
-                                    <div class="knob" id="filter-env-atk-knob" data-param="filter-env-atk">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="filter-env-atk-value">50</div>
-                                        <div class="knob-label">ATK</div>
-                                    </div>
-                                </div>
-                                <div class="knob-container">
-                                    <div class="knob" id="filter-env-dec-knob" data-param="filter-env-dec">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="filter-env-dec-value">200</div>
-                                        <div class="knob-label">DEC</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="knobs-row">
-                                <div class="knob-container">
-                                    <div class="knob" id="filter-env-amt-knob" data-param="filter-env-amt">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="filter-env-amt-value">3000</div>
-                                        <div class="knob-label">AMT</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Column 3: Filter & Distortion -->
-                <div class="control-column">
-                    <!-- Filter Module -->
-                    <div class="module">
-                        <div class="module-header">
-                            <span class="module-title">FILTER</span>
-                        </div>
-                        <div class="module-content">
-                            <div class="filter-type-selector">
-                                <button class="filter-type-btn active" data-filter="lowpass">LP</button>
-                                <button class="filter-type-btn" data-filter="highpass">HP</button>
-                                <button class="filter-type-btn" data-filter="bandpass">BP</button>
-                            </div>
-                            <div class="knobs-row">
-                                <div class="knob-container">
-                                    <div class="knob" id="filter-cutoff-knob" data-param="filter-cutoff">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="filter-cutoff-value">5000</div>
-                                        <div class="knob-label">CUT</div>
-                                    </div>
-                                </div>
-                                <div class="knob-container">
-                                    <div class="knob" id="filter-resonance-knob" data-param="filter-resonance">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="filter-resonance-value">1.0</div>
-                                        <div class="knob-label">RES</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Distortion Module -->
-                    <div class="module">
-                        <div class="module-header">
-                            <span class="module-title">DISTORTION</span>
-                        </div>
-                        <div class="module-content">
-                            <div class="knobs-row">
-                                <div class="knob-container">
-                                    <div class="knob" id="distortion-knob" data-param="distortion">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="distortion-value">0</div>
-                                        <div class="knob-label">DRIVE</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Column 4: Modulation -->
-                <div class="control-column">
-                    <!-- LFO Module -->
-                    <div class="module">
-                        <div class="module-header">
-                            <span class="module-title">LFO</span>
-                        </div>
-                        <div class="module-content">
-                            <div class="lfo-target-selector">
-                                <button class="lfo-target-btn active" data-target="cutoff">CUT</button>
-                                <button class="lfo-target-btn" data-target="amplitude">AMP</button>
-                                <button class="lfo-target-btn" data-target="pitch">PIT</button>
-                            </div>
-                            <div class="knobs-row">
-                                <div class="knob-container">
-                                    <div class="knob" id="lfo-rate-knob" data-param="lfo-rate">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="lfo-rate-value">2.0</div>
-                                        <div class="knob-label">RATE</div>
-                                    </div>
-                                </div>
-                                <div class="knob-container">
-                                    <div class="knob" id="lfo-depth-knob" data-param="lfo-depth">
-                                        <div class="knob-indicator"></div>
-                                        <div class="knob-value" id="lfo-depth-value">20</div>
-                                        <div class="knob-label">DEPTH</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="lfo-wave-selector">
-                                <button class="lfo-wave-btn active" data-wave="sine">SIN</button>
-                                <button class="lfo-wave-btn" data-wave="triangle">TRI</button>
-                                <button class="lfo-wave-btn" data-wave="square">SQR</button>
-                                <button class="lfo-wave-btn" data-wave="sawtooth">SAW</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Modules will be dynamically added here by the module system -->
             </div>
         </div>
 
@@ -336,16 +110,34 @@
         </div>
     </div>
 
-    <!-- Tone.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-
-    <!-- App Scripts -->
-    <script src="audio-engine.js"></script>
+    <!-- V2 Low-Latency Engines -->
+    <script src="audio-engine-v2.js"></script>
+    <script src="oscilloscope-v2.js"></script>
+    
+    <!-- New Transport & Recording System -->
+    <script src="transport.js"></script>
+    <script src="midi-recorder.js"></script>
+    <script src="playback-scheduler.js"></script>
+    
+    <!-- Core DAW Scripts -->
     <script src="daw-core.js"></script>
     <script src="keyboard-controller.js"></script>
-    <script src="oscilloscope.js"></script>
+    <script src="keyboard-help.js"></script>
+    <script src="module-system.js"></script>
+    <script src="module-layout.js"></script>
+    <script src="module-ui.js"></script>
     <script src="knob.js"></script>
     <script src="piano-roll.js"></script>
+    
+    <!-- V2 Integration -->
+    <script src="app-v2-integration.js"></script>
+    
+    <!-- Legacy engines (commented out, kept for reference) -->
+    <!--
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="audio-engine.js"></script>
+    <script src="oscilloscope.js"></script>
     <script src="app.js"></script>
+    -->
 </body>
 </html>

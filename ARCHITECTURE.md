@@ -1,508 +1,239 @@
-# Live DAW - Architecture & Implementation Guide
+# DAW Architecture Documentation
 
-Technical reference for understanding and extending the synthesizer.
+## Overview
 
----
+This document describes the clean architecture for MIDI recording, playback, and piano roll visualization in the FractInst DAW.
 
-## 🏗️ System Architecture
+## Core Architecture
 
-### Core Components
+The system is built around four main components:
+
+1. **Transport** - Single source of truth for timing
+2. **MidiRecorder** - Records MIDI events with proper timestamps
+3. **PlaybackScheduler** - Schedules recorded events for playback
+4. **PianoRoll** - Visual representation and editing interface
+
+### Transport (`transport.js`)
+
+The Transport class is the single source of truth for DAW timing. It uses `audioContext.currentTime` as the primary clock.
+
+**Key Features:**
+- All timing is in **seconds** (converted to beats when needed for display)
+- Provides smooth playhead updates via `requestAnimationFrame`
+- Supports play, stop, seek, loop
+- Handles looping automatically
+
+**API:**
+```javascript
+transport.play()           // Start playback
+transport.stop()           // Stop playback
+transport.seek(timeSeconds) // Seek to specific time
+transport.getCurrentTime()  // Get current position in seconds
+transport.getCurrentBeat()  // Get current position in beats
+transport.setBpm(bpm)      // Set BPM
+transport.setLoopLengthBars(bars) // Set loop length
+```
+
+**Time Representation:**
+- Primary unit: **seconds** (from `audioContext.currentTime`)
+- Display unit: **beats** (calculated from seconds and BPM)
+- Conversion: `beats = (seconds * bpm) / 60`
+
+### MidiRecorder (`midi-recorder.js`)
+
+Records MIDI events with timestamps relative to the recording start time.
+
+**Data Model:**
+- **RecordedMidiEvent**: `{ type, channel, time, note, velocity, frequency, noteKey }`
+- **MidiClip**: `{ id, startTime, length, events: RecordedMidiEvent[] }`
+- **MidiTrack**: `{ id, name, clips: MidiClip[] }`
+
+**Key Features:**
+- Records note-on and note-off events with precise timestamps
+- Creates clips that can be stored and replayed
+- Events are stored with relative time (seconds from clip start)
+
+**API:**
+```javascript
+recorder.startRecording()        // Start a new clip
+recorder.stopRecording()         // Finalize current clip
+recorder.recordNoteOn(noteData)  // Record note-on event
+recorder.recordNoteOff(noteKey) // Record note-off event
+recorder.getClips()             // Get all recorded clips
+```
+
+### PlaybackScheduler (`playback-scheduler.js`)
+
+Schedules MIDI events for playback using a lookahead window.
+
+**Key Features:**
+- Uses a 100ms lookahead window
+- Checks every 25ms for events to schedule
+- Handles looping automatically
+- Prevents double-scheduling of events
+
+**Scheduling Strategy:**
+- Events are scheduled relative to `audioContext.currentTime`
+- Uses `setTimeout` for scheduling notes (acceptable for note scheduling)
+- Tracks scheduled events to prevent duplicates
+- Handles loop boundaries correctly
+
+**API:**
+```javascript
+scheduler.start()  // Start scheduling
+scheduler.stop()   // Stop scheduling
+scheduler.reset()  // Reset (called on seek/stop)
+```
+
+### PianoRoll (`piano-roll.js`)
+
+Visual sequencer that displays clips and provides playhead visualization.
+
+**Key Features:**
+- Uses seconds-based timeline (converted to pixels for display)
+- Smooth playhead updates via Transport's `onUpdate` callback
+- Draggable playhead for scrubbing
+- Real-time updates during recording
+
+**Timeline:**
+- Timeline is in **seconds**
+- Display uses pixels per second (calculated from BPM)
+- Grid shows bars/beats for visual reference
+
+**API:**
+```javascript
+pianoRoll.displayClips(clips)      // Display clips on grid
+pianoRoll.updatePlaybackLine(time) // Update playhead position
+pianoRoll.onBpmChange()            // Recalculate when BPM changes
+```
+
+## Data Flow
+
+### Recording Flow
+
+1. User presses Record → `dawCore.record()` called
+2. `transport.play()` starts transport
+3. `midiRecorder.startRecording()` creates new clip
+4. User plays notes → `keyboardController` calls `dawCore.recordMidiNote()`
+5. `midiRecorder.recordNoteOn()` records event with timestamp
+6. Piano roll updates in real-time via `requestAnimationFrame`
+7. User presses Stop → `midiRecorder.stopRecording()` finalizes clip
+8. Piano roll displays final clip
+
+### Playback Flow
+
+1. User presses Play → `dawCore.play()` called
+2. `transport.play()` starts transport
+3. `playbackScheduler.start()` begins scheduling
+4. Scheduler checks for events in lookahead window
+5. Events are scheduled relative to `audioContext.currentTime`
+6. Notes play via `synthEngine.playNote()`
+7. Piano roll playhead updates smoothly via Transport's `onUpdate`
+
+### Scrubbing Flow
+
+1. User drags playhead → `pianoRoll` handles mouse events
+2. Calculates time from mouse position
+3. On mouseup → `dawCore.seek(timeSeconds)` called
+4. `playbackScheduler.reset()` clears scheduled events
+5. `transport.seek(timeSeconds)` updates position
+6. If was playing, scheduler restarts
+
+## Time Representation
+
+### Primary: Seconds
+
+All internal timing uses **seconds** from `audioContext.currentTime`. This is the most accurate and reliable timing source.
+
+### Display: Beats
+
+For user-facing display, beats are calculated from seconds:
+```javascript
+beats = (seconds * bpm) / 60
+```
+
+### Conversion
+
+The Transport class provides conversion methods:
+- `beatsToSeconds(beats)` - Convert beats to seconds
+- `secondsToBeats(seconds)` - Convert seconds to beats
+
+## BPM and Loop Length
+
+- **BPM**: Beats per minute (default: 120)
+- **Beats per Bar**: 4 (fixed)
+- **Loop Length**: Configurable in bars (default: 4 bars = 16 beats)
+
+When BPM changes:
+- Transport recalculates loop boundaries
+- Piano roll recalculates pixels per second
+- Playback continues from current position
+
+## Extension Points
+
+### Multi-Track Support
+
+Currently supports a single track. To add multi-track:
+1. Extend `MidiRecorder` to support multiple tracks
+2. Update `PianoRoll` to display multiple tracks
+3. Update `PlaybackScheduler` to schedule from multiple tracks
+
+### Quantization
+
+To add quantization:
+1. Add quantization step parameter (e.g., 1/16 notes)
+2. Round event times to nearest quantization step in `MidiRecorder`
+3. Update piano roll grid to show quantization grid
+
+### Loop Regions
+
+To add loop regions:
+1. Extend `Transport` to support multiple loop regions
+2. Update `PlaybackScheduler` to handle region boundaries
+3. Add UI for setting loop start/end points
+
+## Tradeoffs
+
+1. **setTimeout for Scheduling**: While Web Audio API doesn't have direct note scheduling, we use `setTimeout` which is acceptable for note scheduling. For more precise timing, consider using scheduled gain nodes.
+
+2. **Single Track**: Currently supports one track. Multi-track requires architectural changes but the design supports it.
+
+3. **No Quantization**: Events are recorded with exact timestamps. Quantization can be added as a post-processing step.
+
+4. **Simple Loop**: Looping is basic (start to end). More sophisticated loop regions require additional logic.
+
+## File Structure
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   APP.JS (Orchestration)                     │
-│  Connects all components, manages UI, handles events        │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-    ┌─────────────┼─────────────┬──────────────────┐
-    │             │             │                  │
-    ▼             ▼             ▼                  ▼
-┌──────────┐ ┌──────────┐ ┌────────────┐ ┌──────────────┐
-│SynthEngine│ │DAWCore   │ │Keyboard    │ │Oscilloscope  │
-│           │ │(Timing)  │ │Controller  │ │(Visualizer)  │
-│• Filters  │ │• BPM     │ │• MIDI Map  │ │• Waveform    │
-│• Envelopes│ │• Beats   │ │• 2 Octaves │ │• Real-time   │
-│• LFO      │ │• Loop    │ │• Detune    │ └──────────────┘
-│• Unison   │ │• Events  │ │• 3 Layouts │
-│• Noise    │ └──────────┘ └────────────┘
-│• Dist     │
-└──────────┘
+transport.js          - Transport timing system
+midi-recorder.js      - MIDI recording system
+playback-scheduler.js - Playback scheduling
+piano-roll.js         - Piano roll visualization
+daw-core.js           - High-level DAW wrapper
+app-v2-integration.js - Integration layer
 ```
 
----
-
-## 📦 SynthEngine Class
-
-The heart of the synthesizer. Handles all audio synthesis per note.
-
-### Data Structures
+## Usage Example
 
 ```javascript
-this.oscillators = new Map()        // noteKey → {primary, unison2, unison3}
-this.gainNodes = new Map()          // noteKey → GainNode (amplitude envelope)
-this.filters = new Map()            // noteKey → BiquadFilter
-this.filterEnvelopes = new Map()    // noteKey → GainNode (filter mod)
-this.lfoOscillator                  // Global LFO oscillator
-this.lfoDepthGain                   // Global LFO depth control
-this.audioContext                   // Web Audio API context
-this.params                         // All 40+ parameters
+// Initialize
+const transport = new Transport(audioContext);
+const recorder = new MidiRecorder(transport, synthEngine);
+const scheduler = new PlaybackScheduler(transport, synthEngine, recorder);
+const pianoRoll = new PianoRoll(transport, synthEngine, recorder);
+
+// Record
+transport.play();
+recorder.startRecording();
+// ... play notes ...
+recorder.stopRecording();
+
+// Playback
+transport.play();
+scheduler.start();
+// Notes play automatically
+
+// Seek
+transport.seek(5.0); // Seek to 5 seconds
 ```
 
-### Signal Chain (Per Note)
-
-```
-Oscillators (primary + unison) ──┐
-Noise Generator ─────────────────┤
-                                 ├→ Mixer ──→ Distortion ──→ Filter ──→ AmpEnv ──→ Master
-                                 │              (optional)
-                                 └────────────────────────────────────────┘
-
-Filter Cutoff Modulation:
-  FilterEnvelope (ADSR) ──→ Filter.frequency (with Amount)
-
-Global LFO Modulation:
-  LFO ──→ [Filter.frequency | GainNode.gain | Oscillator.frequency]
-```
-
-### Key Methods
-
-#### Initialization
-```javascript
-async init()                    // Initialize Web Audio API
-```
-
-#### Playback
-```javascript
-playNote(frequency, noteKey)    // Play a single polyphonic note with all modules
-releaseNote(noteKey)            // Release note with envelope decay
-stopAllNotes()                  // Stop all active notes (panic)
-```
-
-#### Filter Control
-```javascript
-setFilterCutoff(freq)           // 20-20000 Hz
-setFilterResonance(q)           // 0.1-20
-setFilterType(type)             // 'lowpass' | 'highpass' | 'bandpass'
-setFilterEnvAttack(time)        // Seconds
-setFilterEnvDecay(time)         // Seconds
-setFilterEnvSustain(level)      // 0-1
-setFilterEnvRelease(time)       // Seconds
-setFilterEnvAmount(amount)      // Hz to modulate cutoff
-```
-
-#### LFO Control
-```javascript
-setLFORate(rate)                // 0.1-20 Hz
-setLFODepth(depth)              // 0-100 %
-setLFOWaveType(type)            // 'sine' | 'triangle' | 'square' | 'sawtooth'
-setLFOTarget(target)            // 'cutoff' | 'amplitude' | 'pitch'
-```
-
-#### Unison/Effects
-```javascript
-setUnisonMode(enabled)          // true | false
-setUnisonVoices(voices)         // 2 | 3
-setUnisonDetune(cents)          // 0-100 cents
-setNoiseAmount(amount)          // 0-100 %
-setDistortionAmount(amount)     // 0-100 %
-```
-
-### Advanced Implementation Details
-
-#### Noise Generation Per Note
-```javascript
-// Creates a unique buffer per note to avoid sharing issues
-const bufferSize = this.audioContext.sampleRate * 0.2;
-const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, ...);
-const noiseData = noiseBuffer.getChannelData(0);
-for (let i = 0; i < bufferSize; i++) {
-    noiseData[i] = Math.random() * 2 - 1; // White noise
-}
-```
-
-#### Distortion Waveshaping
-```javascript
-// Soft-clipping curve for warm saturation
-waveshape(x, amount) {
-    const k = (2 * amount) / (1 - amount);
-    return (1 + k) * x / (1 + k * Math.abs(x));
-}
-```
-
-#### Filter Envelope Modulation
-```javascript
-// Separate envelope controls cutoff sweep
-filterEnvGain.gain.linearRampToValueAtTime(1, now + attackTime);
-filterEnvGain.connect(filter.frequency);
-// Modulates cutoff by amount specified in params.filterEnvAmount
-```
-
----
-
-## 📇 DAWCore Class
-
-Global timing and state management.
-
-### Parameters
-
-```javascript
-this.bpm                        // 20-300 BPM
-this.beatsPerBar               // 4 (hardcoded, can be extended)
-this.loopLengthBars            // User configurable
-this.loopLengthBeats           // beatsPerBar * loopLengthBars
-this.currentBeat               // Float: 0 to loopLengthBeats
-this.currentBar                // Integer: bar number
-this.isPlaying                 // Boolean
-this.isRecording               // Boolean
-this.audioContext              // From SynthEngine
-```
-
-### Event System
-
-```javascript
-// Events emitted:
-'beatChanged'   // {beat, bar, subBeat}
-'barChanged'    // {bar}
-'loopComplete'  // (no data)
-'playbackStart' // (no data)
-'playbackStop'  // (no data)
-'recordingStart'// (no data)
-'recordingStop' // (no data)
-
-// Listen:
-dawCore.on('beatChanged', (data) => {...});
-
-// Emit:
-dawCore.emit('beatChanged', {...});
-```
-
-### Timing Implementation
-
-```javascript
-// Uses requestAnimationFrame for frame-accurate timing
-startTimingLoop() {
-    const update = () => {
-        const now = audioContext.currentTime;  // or performance.now()
-        const deltaTime = now - this.lastTimestamp;
-        const beatsPerSecond = this.bpm / 60;
-        const beatDelta = beatsPerSecond * deltaTime;
-
-        this.currentBeat += beatDelta;
-
-        // Handle loop wrap-around
-        if (this.currentBeat >= this.loopLengthBeats) {
-            this.currentBeat = 0;
-            emit('loopComplete');
-        }
-
-        requestAnimationFrame(update);
-    };
-}
-```
-
----
-
-## 🎹 KeyboardController Class
-
-Maps computer keys to MIDI notes.
-
-### Key Mapping System
-
-```javascript
-// Layout structure
-getQWERTYLayout() {
-    return {
-        'KeyQ': { offset: 0, note: 'C' },    // MIDI offset from base
-        'Digit1': { offset: 1, note: 'C#' },
-        ...
-    };
-}
-```
-
-### MIDI Conversion
-
-```javascript
-// Static methods for conversion
-SynthEngine.midiToFrequency(midiNote)
-    // midiNote 69 = 440Hz (A4)
-    // Returns: frequency in Hz
-
-SynthEngine.frequencyToMidi(frequency)
-    // Returns: MIDI note number (0-127)
-```
-
-### Keyboard Event Handling
-
-```javascript
-// Prevents re-triggering on held keys
-this.pressedKeys = new Set();
-
-onKeyDown(event) {
-    if (this.pressedKeys.has(keyCode)) return;  // Already pressed
-    this.pressedKeys.add(keyCode);
-
-    const midiNote = calculateMidiNote(keyCode);
-    const frequency = SynthEngine.midiToFrequency(midiNote);
-    this.synthEngine.playNote(frequency, keyCode);
-}
-
-onKeyUp(event) {
-    if (!this.pressedKeys.has(keyCode)) return;
-    this.pressedKeys.delete(keyCode);
-
-    this.synthEngine.releaseNote(keyCode);
-}
-```
-
----
-
-## 🎨 UI Integration (app.js)
-
-### Knob System
-
-```javascript
-// For each knob, create instance with config
-const knobs[param] = new Knob(element, {
-    min: 20,
-    max: 20000,
-    step: 10,
-    value: 5000,
-    formatValue: (v) => Math.round(v) + 'Hz',
-    onChange: (value) => {
-        synthEngine.setFilterCutoff(value);  // Real-time sync
-    }
-});
-```
-
-### Button Handlers
-
-```javascript
-// Wave type buttons
-waveButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        updateActiveState(btn);  // Visual feedback
-        synthEngine.setWaveType(btn.dataset.wave);  // Audio update
-    });
-});
-
-// Toggle buttons
-unisonToggleBtn.addEventListener('click', () => {
-    const isEnabled = synthEngine.params.unisonMode;
-    synthEngine.setUnisonMode(!isEnabled);
-    updateButtonText();  // Visual feedback
-});
-```
-
-### Event Binding
-
-```javascript
-// Connect DAW Core events to UI
-dawCore.on('beatChanged', (data) => {
-    timeDisplay.textContent = dawCore.getFormattedTime();
-});
-
-dawCore.on('barChanged', (data) => {
-    loopDisplay.textContent = `${data.bar + 1}/${dawCore.loopLengthBars}`;
-});
-```
-
----
-
-## 🔊 Audio Quality Considerations
-
-### Latency
-- **Target**: 20-40ms (typical browser Web Audio API)
-- **Sources**: Audio buffer callback, JavaScript execution time
-- **Optimization**: Use exact `audioContext.currentTime` for syncing
-
-### Anti-Aliasing
-- Oscillators run at audio sample rate (44.1kHz or 48kHz)
-- No manual anti-aliasing needed (handled by browser)
-
-### Click Prevention
-- ADSR envelope prevents clicks on note start/stop
-- Filter envelope smooths cutoff changes
-- Avoid sudden parameter changes (use ramp)
-
-### Polyphony Limits
-- Browser-dependent (typically 100+ simultaneous notes)
-- Each note creates: 1-3 oscillators + gains + filter + envelope
-- Modern browsers can handle 8-16 simultaneous notes easily
-
----
-
-## 🧩 Extensibility Guide
-
-### Adding a New Filter Type
-```javascript
-// In playNote():
-const filter = this.audioContext.createBiquadFilter();
-filter.type = this.params.filterType;  // 'allpass', 'notch', etc.
-
-// In setFilterType():
-setFilterType(type) {
-    this.params.filterType = type;
-    this.filters.forEach(filter => filter.type = type);
-}
-```
-
-### Adding Portamento/Glide
-```javascript
-// In playNote(), before connecting oscillator:
-oscillator.frequency.setValueAtTime(lastFrequency, now);
-oscillator.frequency.linearRampToValueAtTime(frequency, now + glideTime);
-```
-
-### Adding a Second LFO
-```javascript
-// In init():
-this.lfo2Oscillator = this.audioContext.createOscillator();
-this.lfo2DepthGain = this.audioContext.createGain();
-this.lfo2Oscillator.connect(this.lfo2DepthGain);
-this.lfo2Oscillator.start();
-
-// In playNote(), add second LFO routing
-```
-
-### Adding Delay Effect
-```javascript
-// In init():
-this.delayNode = this.audioContext.createDelay(5);
-this.delayNode.delayTime.value = 0.5;
-this.delayFeedback = this.audioContext.createGain();
-this.delayWet = this.audioContext.createGain();
-
-// Connect: gainNode → filter → [→ delayNode → feedback] → master
-```
-
----
-
-## 📈 Performance Metrics
-
-### CPU Usage
-- **Idle**: <1%
-- **Single note**: 1-2%
-- **4-note chord**: 3-5%
-- **8-note full polyphony**: 8-12%
-- **Limits**: Browser-dependent, typically 50%+ safe
-
-### Memory Usage
-- **Base**: ~5 MB (audio buffers, oscilloscope)
-- **Per note**: ~50 KB (oscillators, gains, filter)
-- **8 notes**: ~5 + (8 × 50) = ~405 MB
-
-### Latency
-- **Keyboard → Sound**: ~50-100ms (browser dependent)
-- **Knob change → Audio**: <10ms (real-time)
-- **Filter modulation**: Sample-accurate (zero latency)
-
----
-
-## 🐛 Debugging Tips
-
-### Check if Note is Playing
-```javascript
-console.log(synthEngine.getActiveNoteCount());
-console.log(synthEngine.activeNotes);
-```
-
-### Verify Audio Context
-```javascript
-console.log(synthEngine.audioContext.state);  // 'running' | 'suspended' | 'closed'
-console.log(synthEngine.audioContext.sampleRate);  // Usually 48000
-```
-
-### Check Parameter Values
-```javascript
-console.log(synthEngine.params);  // All current values
-```
-
-### Test Filter
-```javascript
-synthEngine.setFilterCutoff(1000);  // Very dark
-synthEngine.setFilterResonance(10);  // High peak
-```
-
----
-
-## 📋 Checklist for Modifications
-
-When modifying the audio engine:
-- [ ] Update parameter limits and defaults
-- [ ] Add setter method in SynthEngine
-- [ ] Wire setter to UI control in app.js
-- [ ] Test with multiple notes simultaneously
-- [ ] Listen for clicks/artifacts
-- [ ] Verify documentation is updated
-- [ ] Test extreme parameter values
-- [ ] Check browser compatibility
-
----
-
-## 🔗 Dependencies & Compatibility
-
-### Required
-- Web Audio API (modern browsers)
-- ES6+ JavaScript
-- HTML5 Canvas (oscilloscope)
-
-### Browser Support
-- Chrome/Chromium: ✅ Full support
-- Firefox: ✅ Full support
-- Safari: ✅ Full support (webkit prefix needed)
-- Edge: ✅ Full support
-- IE11: ❌ Not supported
-
-### File Structure
-```
-FractInst/
-├── index.html          (UI structure)
-├── styles.css          (Styling)
-├── audio-engine.js     (Synthesis engine)
-├── daw-core.js         (Timing & state)
-├── keyboard-controller.js (MIDI mapping)
-├── app.js              (Orchestration)
-├── knob.js             (Knob component)
-├── oscilloscope.js     (Visualizer)
-└── *.md                (Documentation)
-```
-
----
-
-## 🚀 Future Architecture Improvements
-
-### Phase 3+: Modular Design
-```javascript
-// Consider module-based architecture
-class SynthModule {
-    input;
-    output;
-    params;
-    connect(node) { ... }
-    setParam(name, value) { ... }
-}
-
-// Then: FilterModule, LFOModule, EnvelopeModule, etc.
-```
-
-### Phase 3+: Web Workers
-```javascript
-// Offload heavy processing to worker thread
-// Keep main thread for UI responsiveness
-const audioWorker = new Worker('audio-worker.js');
-```
-
-### Phase 3+: AudioWorklet
-```javascript
-// Replace ScriptProcessor for better performance
-// Allows native-level audio processing
-class PolySynthWorklet extends AudioWorkletProcessor {
-    process(inputs, outputs) { ... }
-}
-```
-
----
-
-**Architecture Document Complete** ✅
-
-For questions about implementation details, refer to the inline comments in the source code.

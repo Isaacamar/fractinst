@@ -7,6 +7,7 @@ class KeyboardController {
     constructor(synthEngine, options = {}) {
         this.synthEngine = synthEngine;
         this.dawCore = options.dawCore || null; // For MIDI recording
+        this.onOctaveChange = options.onOctaveChange || null; // Callback for octave changes
 
         // Configuration
         this.octaveOffset = options.octaveOffset || 4; // C4 = MIDI 60
@@ -14,10 +15,25 @@ class KeyboardController {
 
         // Track pressed keys to prevent re-triggering
         this.pressedKeys = new Set();
+        this.activeChords = new Set(); // Track active chord keys
 
         // Note mapping: Key code -> MIDI note offset
         // Relative to octaveOffset
         this.keyMap = this.getKeyMapForLayout(this.keyboardLayout);
+
+        // Chord definitions (intervals from root)
+        this.chordMap = {
+            'Digit1': { name: 'Major', intervals: [0, 4, 7] },           // Major triad
+            'Digit2': { name: 'Minor', intervals: [0, 3, 7] },           // Minor triad
+            'Digit3': { name: 'Dim', intervals: [0, 3, 6] },             // Diminished
+            'Digit4': { name: 'Aug', intervals: [0, 4, 8] },             // Augmented
+            'Digit5': { name: 'Maj7', intervals: [0, 4, 7, 11] },        // Major 7th
+            'Digit6': { name: 'Min7', intervals: [0, 3, 7, 10] },        // Minor 7th
+            'Digit7': { name: 'Dom7', intervals: [0, 4, 7, 10] },        // Dominant 7th
+            'Digit8': { name: 'Sus4', intervals: [0, 5, 7] },            // Suspended 4th
+            'Digit9': { name: 'Sus2', intervals: [0, 2, 7] },            // Suspended 2nd
+            'Digit0': { name: 'Power', intervals: [0, 7, 12] }           // Power chord
+        };
 
         // Visual feedback
         this.keyElements = new Map(); // DOM elements for visual feedback
@@ -40,44 +56,28 @@ class KeyboardController {
     }
 
     /**
-     * QWERTY Layout (2 octaves, starting from C)
-     * Row 1: C D E F G A B (white keys, octave 1)
-     * Row 2: C# D# F# G# A# (black keys, octave 1)
-     * Row 3: C D E F G A B (white keys, octave 2)
+     * QWERTY Layout (Piano-style)
+     * White keys: A S D F G H J K (C D E F G A B C)
+     * Black keys: W E T Y U (C# D# F# G# A#)
      */
     getQWERTYLayout() {
         return {
-            // First Octave (white keys) - QWERTY row
-            'KeyQ': { offset: 0, note: 'C' },     // C
-            'KeyW': { offset: 2, note: 'D' },     // D
-            'KeyE': { offset: 4, note: 'E' },     // E
-            'KeyR': { offset: 5, note: 'F' },     // F
-            'KeyT': { offset: 7, note: 'G' },     // G
-            'KeyY': { offset: 9, note: 'A' },     // A
-            'KeyU': { offset: 11, note: 'B' },    // B
+            // White keys (A to K = C to C)
+            'KeyA': { offset: 0, note: 'C' },     // C
+            'KeyS': { offset: 2, note: 'D' },     // D
+            'KeyD': { offset: 4, note: 'E' },     // E
+            'KeyF': { offset: 5, note: 'F' },     // F
+            'KeyG': { offset: 7, note: 'G' },     // G
+            'KeyH': { offset: 9, note: 'A' },     // A
+            'KeyJ': { offset: 11, note: 'B' },    // B
+            'KeyK': { offset: 12, note: 'C' },    // C (octave +1)
 
-            // First Octave (black keys) - Number row 1-7
-            'Digit1': { offset: 1, note: 'C#' },  // C#
-            'Digit2': { offset: 3, note: 'D#' },  // D#
-            'Digit3': { offset: 6, note: 'F#' },  // F#
-            'Digit4': { offset: 8, note: 'G#' },  // G#
-            'Digit5': { offset: 10, note: 'A#' }, // A#
-
-            // Second Octave (white keys) - ASDFGH row
-            'KeyA': { offset: 12, note: 'C' },    // C (octave +1)
-            'KeyS': { offset: 14, note: 'D' },    // D
-            'KeyD': { offset: 16, note: 'E' },    // E
-            'KeyF': { offset: 17, note: 'F' },    // F
-            'KeyG': { offset: 19, note: 'G' },    // G
-            'KeyH': { offset: 21, note: 'A' },    // A
-            'KeyJ': { offset: 23, note: 'B' },    // B
-
-            // Second Octave (black keys) - Number row 6-0
-            'Digit6': { offset: 13, note: 'C#' }, // C#
-            'Digit7': { offset: 15, note: 'D#' }, // D#
-            'Digit8': { offset: 18, note: 'F#' }, // F#
-            'Digit9': { offset: 20, note: 'G#' }, // G#
-            'Digit0': { offset: 22, note: 'A#' }  // A#
+            // Black keys (W E T Y U = C# D# F# G# A#)
+            'KeyW': { offset: 1, note: 'C#' },    // C#
+            'KeyE': { offset: 3, note: 'D#' },    // D#
+            'KeyT': { offset: 6, note: 'F#' },    // F#
+            'KeyY': { offset: 8, note: 'G#' },    // G#
+            'KeyU': { offset: 10, note: 'A#' }    // A#
         };
     }
 
@@ -142,6 +142,26 @@ class KeyboardController {
     onKeyDown(event) {
         const keyCode = event.code;
 
+        // Check if it's an octave control key
+        if (keyCode === 'Equal') { // + key
+            event.preventDefault();
+            this.octaveUp();
+            return;
+        }
+        if (keyCode === 'Minus') { // - key
+            event.preventDefault();
+            this.octaveDown();
+            return;
+        }
+
+        // Check if it's a chord key
+        if (this.chordMap[keyCode]) {
+            if (this.activeChords.has(keyCode)) return;
+            event.preventDefault();
+            this.playChord(keyCode);
+            return;
+        }
+
         // Ignore if key is already pressed or not in map
         if (this.pressedKeys.has(keyCode) || !this.keyMap[keyCode]) {
             return;
@@ -153,7 +173,10 @@ class KeyboardController {
 
         const mapping = this.keyMap[keyCode];
         const midiNote = (this.octaveOffset * 12) + mapping.offset;
-        const frequency = SynthEngine.midiToFrequency(midiNote);
+        // Use static method from LowLatencySynthEngine or fallback calculation
+        const frequency = (typeof LowLatencySynthEngine !== 'undefined' && LowLatencySynthEngine.midiToFrequency) 
+            ? LowLatencySynthEngine.midiToFrequency(midiNote)
+            : 440 * Math.pow(2, (midiNote - 69) / 12);
 
         console.log('Key pressed:', keyCode, 'Note:', mapping.note, 'Frequency:', frequency);
 
@@ -188,6 +211,14 @@ class KeyboardController {
     onKeyUp(event) {
         const keyCode = event.code;
 
+        // Check if it's a chord key
+        if (this.chordMap[keyCode]) {
+            if (!this.activeChords.has(keyCode)) return;
+            event.preventDefault();
+            this.releaseChord(keyCode);
+            return;
+        }
+
         if (!this.pressedKeys.has(keyCode)) {
             return;
         }
@@ -209,6 +240,76 @@ class KeyboardController {
         if (mapping) {
             this.visualizeKeyPress(keyCode, mapping.note, false);
         }
+    }
+
+    /**
+     * Play a chord
+     */
+    playChord(keyCode) {
+        const chord = this.chordMap[keyCode];
+        if (!chord) return;
+
+        this.activeChords.add(keyCode);
+
+        // Root note is C at current octave
+        const rootMidi = (this.octaveOffset * 12);
+
+        console.log(`Playing ${chord.name} chord:`, chord.intervals);
+
+        // Ensure audio is initialized
+        if (!this.synthEngine.audioContext) {
+            this.synthEngine.resumeAudio().then(() => {
+                this.playChordNotes(keyCode, rootMidi, chord);
+            });
+        } else {
+            this.playChordNotes(keyCode, rootMidi, chord);
+        }
+    }
+
+    /**
+     * Play individual chord notes
+     */
+    playChordNotes(keyCode, rootMidi, chord) {
+        chord.intervals.forEach((interval, index) => {
+            const midiNote = rootMidi + interval;
+            const frequency = (typeof LowLatencySynthEngine !== 'undefined' && LowLatencySynthEngine.midiToFrequency) 
+                ? LowLatencySynthEngine.midiToFrequency(midiNote)
+                : 440 * Math.pow(2, (midiNote - 69) / 12);
+            const noteKey = `${keyCode}_${index}`;
+
+            this.synthEngine.playNote(frequency, noteKey);
+
+            // Record chord notes if recording
+            if (this.dawCore) {
+                this.dawCore.recordMidiNote({
+                    frequency: frequency,
+                    noteKey: noteKey,
+                    midiNote: midiNote,
+                    velocity: 100
+                });
+            }
+        });
+    }
+
+    /**
+     * Release a chord
+     */
+    releaseChord(keyCode) {
+        const chord = this.chordMap[keyCode];
+        if (!chord) return;
+
+        this.activeChords.delete(keyCode);
+
+        // Release all notes in the chord
+        chord.intervals.forEach((interval, index) => {
+            const noteKey = `${keyCode}_${index}`;
+            this.synthEngine.releaseNote(noteKey);
+
+            // Record release if recording
+            if (this.dawCore) {
+                this.dawCore.recordMidiNoteRelease(noteKey);
+            }
+        });
     }
 
     /**
@@ -256,6 +357,10 @@ class KeyboardController {
      */
     octaveUp() {
         this.octaveOffset = Math.min(8, this.octaveOffset + 1);
+        if (this.onOctaveChange) {
+            this.onOctaveChange();
+        }
+        console.log('Octave up:', this.octaveOffset);
     }
 
     /**
@@ -263,6 +368,10 @@ class KeyboardController {
      */
     octaveDown() {
         this.octaveOffset = Math.max(0, this.octaveOffset - 1);
+        if (this.onOctaveChange) {
+            this.onOctaveChange();
+        }
+        console.log('Octave down:', this.octaveOffset);
     }
 
     /**

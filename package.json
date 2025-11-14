@@ -1,23 +1,14 @@
 {
   "name": "fractinst",
-  "version": "1.0.0",
-  "description": "A professional-grade browser-based synthesizer and Digital Audio Workstation (DAW) built with the Web Audio API. Features real-time sound design, polyphonic synthesis, recording, and an intuitive QWERTY keyboard interface.",
-  "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "version": "2.0.0",
+  "description": "Low-latency browser-based synthesizer and DAW",
+  "main": "app-v2-integration.js",
+  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Isaacamar/fractinst.git"
   },
-  "keywords": [],
+  "keywords": ["synthesizer", "daw", "web-audio"],
   "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Isaacamar/fractinst/issues"
-  },
-  "homepage": "https://github.com/Isaacamar/fractinst#readme",
-  "dependencies": {
-    "tone": "^15.1.22"
-  }
+  "license": "ISC"
 }

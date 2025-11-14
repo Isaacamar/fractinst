@@ -1,11 +1,14 @@
 /**
  * Piano Roll Editor - Visual sequencer for recording and editing notes
+ * Refactored to use Transport system with seconds-based timing
  */
 
 class PianoRoll {
-    constructor(dawCore, synthEngine) {
-        this.dawCore = dawCore;
+    constructor(transport, synthEngine, midiRecorder, dawCore = null) {
+        this.transport = transport;
         this.synthEngine = synthEngine;
+        this.midiRecorder = midiRecorder;
+        this.dawCore = dawCore; // Optional reference for seeking
 
         // Configuration
         this.numBars = 4;
@@ -14,18 +17,33 @@ class PianoRoll {
         this.highestNote = 96; // C7
         this.noteRange = this.highestNote - this.lowestNote + 1; // 73 notes
 
-        // Layout
-        this.pixelsPerBeat = 100; // Larger for better spacing
+        // Layout - using pixels per second for more accurate scaling
+        this.pixelsPerSecond = 50; // Will be recalculated based on BPM
         this.keyHeight = 20;
 
         // State
         this.isDraggingPlayhead = false;
-        this.currentPosition = 0; // In beats
+        this.dragStartX = 0;
         this.playbackLine = null;
         this.gridContainer = null;
+        this.gridElement = null;
+        
+        // Cached note elements
+        this.noteElements = new Map(); // clipId -> Set of note elements
 
         this.initializePianoRoll();
         this.setupPlaybackLineSync();
+        this.updatePixelsPerSecond();
+    }
+
+    /**
+     * Update pixels per second based on current BPM
+     */
+    updatePixelsPerSecond() {
+        // Calculate pixels per beat, then convert to pixels per second
+        const pixelsPerBeat = 100;
+        const secondsPerBeat = 60 / this.transport.bpm;
+        this.pixelsPerSecond = pixelsPerBeat / secondsPerBeat;
     }
 
     /**
@@ -43,6 +61,8 @@ class PianoRoll {
      */
     renderPianoKeys() {
         const keysList = document.getElementById('piano-keys-list');
+        if (!keysList) return;
+        
         keysList.innerHTML = '';
 
         // Create keys from lowest to highest (reversed because flex-direction: column-reverse)
@@ -63,7 +83,7 @@ class PianoRoll {
 
             // Click to play note
             keyEl.addEventListener('mousedown', () => {
-                const frequency = this.synthEngine.constructor.midiToFrequency(midiNote);
+                const frequency = LowLatencySynthEngine.midiToFrequency(midiNote);
                 this.synthEngine.playNote(frequency, `piano-roll-${midiNote}`);
                 keyEl.classList.add('active');
             });
@@ -83,20 +103,22 @@ class PianoRoll {
     }
 
     /**
-     * Render time ruler at the top (4 sections, 4 beats each)
+     * Render time ruler at the top
      */
     renderTimeRuler() {
         const ruler = document.getElementById('time-ruler');
+        if (!ruler) return;
+        
         ruler.innerHTML = '';
 
-        // Create 4 bar sections
+        // Create bar sections
         for (let bar = 0; bar < this.numBars; bar++) {
             const barContainer = document.createElement('div');
             barContainer.style.display = 'flex';
             barContainer.style.flex = '1';
             barContainer.style.borderRight = '2px solid #fff';
 
-            // Create 4 beats per bar
+            // Create beats per bar
             for (let beat = 0; beat < this.beatsPerBar; beat++) {
                 const marker = document.createElement('div');
                 marker.className = 'time-marker';
@@ -117,14 +139,22 @@ class PianoRoll {
     }
 
     /**
-     * Render the main grid (4 bars, 4 beats each)
+     * Render the main grid
      */
     renderGrid() {
         const grid = document.getElementById('piano-roll-grid');
+        if (!grid) return;
+        
+        this.gridElement = grid;
         grid.innerHTML = '';
 
         // Set grid as relative positioning container for absolute-positioned notes
         grid.style.position = 'relative';
+
+        // Calculate grid width in seconds
+        const totalSeconds = this.transport.beatsToSeconds(this.numBars * this.beatsPerBar);
+        const gridWidth = totalSeconds * this.pixelsPerSecond;
+        grid.style.width = gridWidth + 'px';
 
         // Create a row for each note
         for (let midiNote = this.lowestNote; midiNote <= this.highestNote; midiNote++) {
@@ -133,17 +163,17 @@ class PianoRoll {
             row.dataset.midiNote = midiNote;
             row.style.display = 'flex';
             row.style.height = this.keyHeight + 'px';
-            row.style.position = 'relative'; // Allow absolute-positioned notes inside
+            row.style.position = 'relative';
 
-            // Create 4 bars
+            // Create bar containers for visual structure
             for (let bar = 0; bar < this.numBars; bar++) {
                 const barContainer = document.createElement('div');
                 barContainer.style.display = 'flex';
                 barContainer.style.flex = '1';
                 barContainer.style.borderRight = '2px solid #fff';
-                barContainer.style.position = 'relative'; // For note positioning
+                barContainer.style.position = 'relative';
 
-                // Create 4 beats per bar
+                // Create beat cells
                 for (let beat = 0; beat < this.beatsPerBar; beat++) {
                     const cell = document.createElement('div');
                     cell.className = 'piano-roll-beat';
@@ -153,11 +183,6 @@ class PianoRoll {
                     cell.dataset.beat = beat;
                     cell.dataset.midiNote = midiNote;
 
-                    // Click to add note
-                    cell.addEventListener('click', () => {
-                        this.addNote(midiNote, bar * this.beatsPerBar + beat);
-                    });
-
                     barContainer.appendChild(cell);
                 }
 
@@ -166,175 +191,217 @@ class PianoRoll {
 
             grid.appendChild(row);
         }
-
-        // Set grid dimensions
-        const totalBeats = this.numBars * this.beatsPerBar;
-        const gridWidth = totalBeats * this.pixelsPerBeat;
-        grid.style.width = gridWidth + 'px';
     }
 
     /**
-     * Add a note to the grid (placeholder - will record actual notes later)
+     * Display MIDI clips on the piano roll
      */
-    addNote(midiNote, beat) {
-        console.log('Note added:', this.midiToNoteName(midiNote), 'at beat', beat);
-        // This will be extended to actually record the note
-    }
+    displayClips(clips) {
+        if (!clips || clips.length === 0) {
+            this.clearAllNotes();
+            return;
+        }
 
-    /**
-     * Display MIDI notes on the piano roll grid
-     */
-    displayMidiNotes(midiNotes) {
-        if (!midiNotes || midiNotes.length === 0) return;
-
-        const grid = document.getElementById('piano-roll-grid');
+        const grid = this.gridElement;
         if (!grid) return;
 
-        // Clear previous note elements
-        const oldNotes = grid.querySelectorAll('.midi-note');
-        oldNotes.forEach(el => el.remove());
+        // Clear previous notes
+        this.clearAllNotes();
 
-        // Calculate total pixels for positioning
-        const totalBeats = this.numBars * this.beatsPerBar;
-        const gridWidth = totalBeats * this.pixelsPerBeat;
+        // Render each clip
+        for (const clip of clips) {
+            this.renderClip(clip);
+        }
+    }
 
-        // Render each MIDI note
-        for (let i = 0; i < midiNotes.length; i++) {
-            const note = midiNotes[i];
+    /**
+     * Render a single clip
+     */
+    renderClip(clip) {
+        const grid = this.gridElement;
+        if (!grid || !clip.events || clip.events.length === 0) return;
 
-            // Get MIDI note from frequency
-            const midiNote = this.frequencyToMidiNote(note.frequency);
+        const clipNoteElements = new Set();
 
-            // Find the row for this note
-            const row = grid.querySelector(`[data-midi-note="${midiNote}"]`);
+        // Group note-ons with their note-offs
+        const notePairs = new Map(); // noteKey -> { noteOn, noteOff }
+
+        for (const event of clip.events) {
+            if (event.type === 'noteOn') {
+                notePairs.set(event.noteKey, { noteOn: event, noteOff: null });
+            } else if (event.type === 'noteOff') {
+                const pair = notePairs.get(event.noteKey);
+                if (pair) {
+                    pair.noteOff = event;
+                }
+            }
+        }
+
+        // Render each note pair
+        for (const [noteKey, pair] of notePairs.entries()) {
+            if (!pair.noteOn) continue;
+
+            const noteOn = pair.noteOn;
+            const noteOff = pair.noteOff;
+
+            // Calculate note duration
+            let duration = 0.5; // Default duration
+            if (noteOff) {
+                duration = noteOff.time - noteOn.time;
+            }
+
+            // Calculate position on timeline
+            const absoluteStartTime = clip.startTime + noteOn.time;
+            const absoluteEndTime = absoluteStartTime + duration;
+
+            // Convert to pixels
+            const startPixels = absoluteStartTime * this.pixelsPerSecond;
+            const durationPixels = duration * this.pixelsPerSecond;
+
+            // Find the row for this MIDI note
+            const row = grid.querySelector(`[data-midi-note="${noteOn.note}"]`);
             if (!row) continue;
 
-            // Calculate position in pixels (relative to grid)
-            const startPixels = (note.startBeat / totalBeats) * gridWidth;
-            const durationPixels = (note.duration / totalBeats) * gridWidth;
-
-            // Create note element with absolute positioning
+            // Create note element
             const noteEl = document.createElement('div');
             noteEl.className = 'midi-note';
             noteEl.style.position = 'absolute';
             noteEl.style.left = startPixels + 'px';
             noteEl.style.top = '0';
-            noteEl.style.width = Math.max(10, durationPixels) + 'px';
+            noteEl.style.width = Math.max(4, durationPixels) + 'px';
             noteEl.style.height = this.keyHeight + 'px';
-            noteEl.title = this.frequencyToNoteName(note.frequency);
+            noteEl.title = `${this.midiToNoteName(noteOn.note)} (${duration.toFixed(2)}s)`;
+            noteEl.dataset.clipId = clip.id;
+            noteEl.dataset.noteKey = noteKey;
 
             row.appendChild(noteEl);
-            console.log(`Added note: ${note.frequency}Hz at ${note.startBeat}q for ${note.duration}q`);
+            clipNoteElements.add(noteEl);
         }
+
+        // Store note elements for this clip
+        this.noteElements.set(clip.id, clipNoteElements);
     }
 
     /**
-     * Convert frequency to MIDI note number
+     * Clear all notes
      */
-    frequencyToMidiNote(frequency) {
-        return Math.round(12 * Math.log2(frequency / 440) + 69);
+    clearAllNotes() {
+        const grid = this.gridElement;
+        if (!grid) return;
+
+        const oldNotes = grid.querySelectorAll('.midi-note');
+        oldNotes.forEach(el => el.remove());
+        this.noteElements.clear();
     }
 
     /**
-     * Convert frequency to note name
+     * Update playback line position based on transport time
      */
-    frequencyToNoteName(frequency) {
-        const midiNote = this.frequencyToMidiNote(frequency);
-        return this.midiToNoteName(midiNote);
+    updatePlaybackLine(timeSeconds) {
+        if (!this.playbackLine || this.isDraggingPlayhead) return;
+
+        // Calculate position as percentage of total timeline
+        const totalSeconds = this.transport.beatsToSeconds(this.numBars * this.beatsPerBar);
+        const percentage = Math.max(0, Math.min(100, (timeSeconds / totalSeconds) * 100));
+
+        // Update position smoothly
+        this.playbackLine.style.left = percentage.toFixed(3) + '%';
     }
 
     /**
-     * Setup playback line dragging with better UX
+     * Setup playback line dragging and scrubbing
      */
     setupPlaybackLineDragging() {
         this.playbackLine = document.getElementById('playback-line');
-        this.gridContainer = document.getElementById('piano-roll-grid-container');
+        this.gridContainer = document.querySelector('.piano-roll-grid-container') || 
+                             document.querySelector('.piano-roll-area');
 
         if (!this.playbackLine || !this.gridContainer) return;
 
-        // Mouse down on playback line - larger hit area
-        this.playbackLine.addEventListener('mousedown', (e) => {
-            this.isDraggingPlayhead = true;
-            this.playbackLine.classList.add('dragging');
-            e.preventDefault();
-            console.log('Started dragging playback line');
-        });
+        // Mouse down on playback line or grid
+        const handleMouseDown = (e) => {
+            // Check if clicking on playback line or grid area
+            if (e.target === this.playbackLine || 
+                e.target.classList.contains('piano-roll-grid') ||
+                e.target.classList.contains('piano-roll-beat')) {
+                this.isDraggingPlayhead = true;
+                this.dragStartX = e.clientX;
+                this.playbackLine.classList.add('dragging');
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        };
 
         // Mouse move to drag playback line
-        document.addEventListener('mousemove', (e) => {
+        const handleMouseMove = (e) => {
             if (!this.isDraggingPlayhead) return;
 
-            this.scrubToMousePosition(e);
-        });
+            const rect = this.gridContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left + this.gridContainer.scrollLeft;
 
-        // Mouse up anywhere to stop dragging
-        document.addEventListener('mouseup', () => {
+            // Calculate time from mouse position
+            const totalSeconds = this.transport.beatsToSeconds(this.numBars * this.beatsPerBar);
+            const totalPixels = totalSeconds * this.pixelsPerSecond;
+            const timeSeconds = Math.max(0, Math.min(totalSeconds, x / this.pixelsPerSecond));
+
+            // Update visual position
+            const percentage = (timeSeconds / totalSeconds) * 100;
+            this.playbackLine.style.left = percentage.toFixed(3) + '%';
+
+            // Store for seek on mouseup
+            this.scrubTime = timeSeconds;
+        };
+
+        // Mouse up to seek transport
+        const handleMouseUp = () => {
             if (this.isDraggingPlayhead) {
                 this.isDraggingPlayhead = false;
                 this.playbackLine.classList.remove('dragging');
-                console.log('Stopped dragging playback line');
+
+                // Seek transport to scrubbed position
+                if (this.scrubTime !== undefined) {
+                    const wasPlaying = this.transport.isPlaying;
+                    
+                    // Use dawCore.seek if available (handles scheduler reset)
+                    if (this.dawCore) {
+                        this.dawCore.seek(this.scrubTime);
+                    } else {
+                        // Fallback to direct transport seek
+                        this.transport.seek(this.scrubTime);
+                        if (wasPlaying) {
+                            this.transport.play();
+                        }
+                    }
+                    
+                    delete this.scrubTime;
+                }
             }
-        });
+        };
 
-        // Also allow clicking anywhere in the grid to scrub
-        this.gridContainer.addEventListener('click', (e) => {
-            // Only scrub if not clicking on a grid cell (future note editing)
-            if (e.target === this.gridContainer || e.target.classList.contains('piano-roll-grid')) {
-                this.scrubToMousePosition(e);
-            }
-        });
+        this.gridContainer.addEventListener('mousedown', handleMouseDown);
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
     }
 
     /**
-     * Scrub to mouse position
-     */
-    scrubToMousePosition(e) {
-        const rect = this.gridContainer.getBoundingClientRect();
-        const x = e.clientX - rect.left + this.gridContainer.scrollLeft;
-
-        // Calculate position as percentage of scroll width
-        const scrollWidth = this.gridContainer.scrollWidth;
-        const percentage = Math.max(0, Math.min(100, (x / scrollWidth) * 100));
-
-        // Convert to beat position
-        const totalBeats = this.numBars * this.beatsPerBar;
-        const beatPosition = (percentage / 100) * totalBeats;
-
-        // Update Tone.Transport position using quarter notes (beats)
-        const beatPositionClamped = Math.max(0, Math.min(totalBeats - 0.01, beatPosition));
-        if (this.dawCore.transport) {
-            this.dawCore.transport.position = `${beatPositionClamped}q`; // quarters = beats
-        }
-
-        this.updatePlaybackLine(beatPositionClamped);
-
-        console.log('Scrubbed to beat:', beatPositionClamped.toFixed(2));
-    }
-
-    /**
-     * Update playback line position (optimized - minimal DOM updates)
-     */
-    updatePlaybackLine(beatPosition) {
-        if (!this.playbackLine) return;
-
-        const totalBeats = this.numBars * this.beatsPerBar;
-        const percentage = (beatPosition / totalBeats) * 100;
-
-        // Only update if percentage has changed significantly (1 decimal place)
-        const currentLeft = this.playbackLine.style.left;
-        const newLeft = percentage.toFixed(2) + '%';
-
-        if (currentLeft !== newLeft) {
-            this.playbackLine.style.left = newLeft;
-        }
-    }
-
-    /**
-     * Setup syncing playback line with DAW playback
+     * Setup syncing playback line with Transport
      */
     setupPlaybackLineSync() {
-        // The app.js will call updatePlaybackLine on beatChanged events
-        // This keeps the playback line in sync with the DAW timing
+        // Register with transport for smooth updates
+        this.transport.onUpdate((timeSeconds) => {
+            this.updatePlaybackLine(timeSeconds);
+        });
+    }
+
+    /**
+     * Update display when BPM changes
+     */
+    onBpmChange() {
+        this.updatePixelsPerSecond();
+        this.renderGrid();
+        // Re-render clips with new scaling
+        const clips = this.midiRecorder.getClips();
+        this.displayClips(clips);
     }
 
     /**
@@ -353,8 +420,24 @@ class PianoRoll {
     show() {
         const instrumentView = document.querySelector('.daw-layout');
         const pianoRollView = document.getElementById('piano-roll-view');
-        if (instrumentView) instrumentView.style.display = 'none';
-        if (pianoRollView) pianoRollView.style.display = 'flex';
+        
+        console.log('PianoRoll.show() called');
+        console.log('Instrument view:', instrumentView);
+        console.log('Piano roll view:', pianoRollView);
+        
+        if (instrumentView) {
+            instrumentView.style.display = 'none';
+            console.log('Hid instrument view');
+        } else {
+            console.warn('Instrument view not found');
+        }
+        
+        if (pianoRollView) {
+            pianoRollView.style.display = 'flex';
+            console.log('Showed piano roll view');
+        } else {
+            console.error('Piano roll view element not found!');
+        }
     }
 
     /**
