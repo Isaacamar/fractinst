@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { Track } from '../types/track';
-import { InstrumentConfiguration } from '../types/instrument';
 import { MidiClip } from '../engines/MidiRecorder';
 
 interface TrackStore {

@@ -318,7 +318,7 @@ export const ArrangementView: React.FC<ArrangementViewProps> = ({
             {tracks.map(track => (
               <div key={track.id} className="timeline-track-row" onDoubleClick={() => onOpenEditor(track.id)}>
                 {/* Render Clips */}
-                {track.clips.map((clip, idx) => {
+                {track.clips.map((clip) => {
                   const startPixels = (clip.startTime / (60 / (transport?.getBpm() || 120))) * pixelsPerBeat;
                   const widthPixels = (clip.length / (60 / (transport?.getBpm() || 120))) * pixelsPerBeat;
                   

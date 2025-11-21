@@ -6,7 +6,6 @@
 import type { InstrumentConfiguration, InstrumentLibraryState } from '../types/instrument';
 
 const STORAGE_KEY = 'fractinst_instrument_library';
-const PRESET_KEY = 'fractinst_presets';
 
 export function saveInstrument(instrument: InstrumentConfiguration): void {
   const state = loadLibraryState();

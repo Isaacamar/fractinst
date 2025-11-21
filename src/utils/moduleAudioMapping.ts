@@ -3,8 +3,6 @@
  * Maps module types to audio engine controls for enable/disable functionality
  */
 
-import type { SynthModule } from '../systems/ModuleManager';
-
 export interface ModuleAudioMapping {
   moduleType: string;
   audioControl: {

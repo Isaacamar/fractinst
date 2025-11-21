@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useKeyboardStore, DEFAULT_CHORD_MAP } from '../../stores/keyboardStore';
-import { COMMON_CHORDS, KeyDefinition } from '../../types/keyboard';
+import { useKeyboardStore } from '../../stores/keyboardStore';
+import { COMMON_CHORDS, type KeyDefinition } from '../../types/keyboard';
 import './BindingsModal.css';
 
 interface BindingsModalProps {
@@ -190,7 +190,7 @@ export const BindingsModal: React.FC<BindingsModalProps> = ({ isOpen, onClose, c
               <div className="black-keys-row">
                 {blackKeys.map(code => {
                   const def = keyDefinitions[code];
-                  const [left, right] = def.betweenKeys || [0, 1];
+                  const [left] = def.betweenKeys || [0, 1];
                   const leftPercent = (left + 1) * (100 / 8);
                   
                   return (

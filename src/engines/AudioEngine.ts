@@ -43,18 +43,6 @@ export class AudioEngine {
   // Module enable/disable states
   private moduleStates: Map<string, boolean> = new Map();
   
-  // Master oscillator mute (for oscillator-base module)
-  private oscillatorMuteGain: GainNode | null = null;
-  
-  // Envelope mute (for adsr-base module)
-  private envelopeMuteGain: GainNode | null = null;
-  
-  // LFO mute (for lfo-base module)
-  private lfoMuteGain: GainNode | null = null;
-  
-  // Filter envelope mute (for filter-env-base module)
-  private filterEnvMuteGain: GainNode | null = null;
-  
   // Parameters
   public params: AudioEngineParams = {
     waveType: 'sine',
@@ -687,6 +675,30 @@ export class AudioEngine {
     }
   }
   
+  // Update audio parameters
+  updateParams(params: AudioEngineParams): void {
+    this.params = { ...params };
+    
+    // Apply all parameters
+    this.setWaveType(this.params.waveType);
+    this.setMasterVolume(this.params.masterVolume * 100);
+    this.setAttackTime(this.params.attackTime);
+    this.setDecayTime(this.params.decayTime);
+    this.setSustainLevel(this.params.sustainLevel * 100);
+    this.setReleaseTime(this.params.releaseTime);
+    this.setFilterCutoff(this.params.filterCutoff);
+    this.setFilterResonance(this.params.filterResonance);
+    this.setFilterType(this.params.filterType);
+    this.setDistortionAmount(this.params.distortionAmount);
+    this.setChorusAmount(this.params.chorusAmount);
+    this.setReverbAmount(this.params.reverbAmount);
+    this.setLFORate(this.params.lfoRate);
+    this.setLFODepth(this.params.lfoDepth);
+    this.setLFOWaveType(this.params.lfoWaveType);
+    this.setLFOTarget(this.params.lfoTarget);
+    this.setMasterDetune(this.params.masterDetune);
+  }
+
   // ===== PARAMETER SETTERS =====
   
   setWaveType(type: OscillatorType): void {

@@ -3,7 +3,7 @@
  * Visual sequencer for MIDI editing
  */
 
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import type { Transport } from '../../engines/Transport';
 import type { AudioEngine } from '../../engines/AudioEngine';
 import type { MidiClip, RecordedMidiEvent } from '../../engines/MidiRecorder';
@@ -68,7 +68,6 @@ export const MidiEditor: React.FC<MidiEditorProps> = ({
   const lowestNote = 24; // C1
   const highestNote = 96; // C7
   const numBars = loopLengthBars; // Use dynamic loop length
-  const beatsPerBar = 4;
   const keyHeight = 20;
   const pixelsPerBeat = 100; // Zoom level
   
@@ -101,7 +100,6 @@ export const MidiEditor: React.FC<MidiEditorProps> = ({
       keys.push({
         midiNote,
         noteName: midiToNoteName(midiNote),
-        isC: midiToNoteName(midiNote).startsWith('C'),
         isBlack: midiToNoteName(midiNote).includes('#')
       });
     }
@@ -294,8 +292,6 @@ export const MidiEditor: React.FC<MidiEditorProps> = ({
         const clip = { ...newClips[clipIndex] };
         // Deep clone events to modify
         clip.events = clip.events.map(ev => ({ ...ev }));
-        
-        const noteKey = isNaN(Number(noteKeyStr)) ? noteKeyStr : Number(noteKeyStr);
         
         const noteOnIndex = clip.events.findIndex(ev => ev.noteKey.toString() === noteKeyStr && ev.type === 'noteOn');
         const noteOffIndex = clip.events.findIndex(ev => ev.noteKey.toString() === noteKeyStr && ev.type === 'noteOff');
@@ -521,7 +517,7 @@ export const MidiEditor: React.FC<MidiEditorProps> = ({
         <div className="piano-keys-sidebar">
           <div className="piano-keys-header">NOTES</div>
           <div className="piano-keys-list" ref={keysRef}>
-            {pianoKeys.map(({ midiNote, noteName, isC, isBlack }) => (
+            {pianoKeys.map(({ midiNote, noteName, isBlack }) => (
               <div
                 key={midiNote}
                 className={`piano-key ${isBlack ? 'black-key' : 'white-key'}`}

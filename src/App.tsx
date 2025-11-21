@@ -18,7 +18,6 @@ import { useMidiStore } from './stores/midiStore';
 import { useAudioStore } from './stores/audioStore';
 import { useTrackStore } from './stores/trackStore';
 import type { InstrumentConfiguration } from './types/instrument';
-import { saveInstrument } from './utils/instrumentStorage';
 import './App.css';
 
 function App() {

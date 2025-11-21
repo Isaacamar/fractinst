@@ -13,6 +13,7 @@ interface TransportBarProps {
   onRecord: () => void;
   onMetronomeToggle: () => void;
   onBpmChange: (bpm: number) => void;
+  onLoopLengthChange: (bars: number) => void;
   isRecording: boolean;
   isMetronomeEnabled: boolean;
 }
@@ -23,6 +24,7 @@ export const TransportBar: React.FC<TransportBarProps> = ({
   onRecord,
   onMetronomeToggle,
   onBpmChange,
+  onLoopLengthChange,
   isRecording,
   isMetronomeEnabled
 }) => {
@@ -39,9 +41,7 @@ export const TransportBar: React.FC<TransportBarProps> = ({
     const newLength = parseInt(e.target.value, 10);
     if (!isNaN(newLength) && newLength > 0) {
       setLoopLengthBars(newLength);
-      // We also need to update the transport engine, which should happen via effect in App or direct callback prop
-      // Since setLoopLengthBars only updates store, we need to propagate to DAWCore/Transport
-      // But TransportBar only takes onBpmChange. We should probably pass onLoopLengthChange or use effect in App.
+      onLoopLengthChange(newLength);
     }
   };
 

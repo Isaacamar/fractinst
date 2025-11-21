@@ -5,8 +5,6 @@ import './TrackSelector.css';
 export const TrackSelector: React.FC = () => {
   const { tracks, activeTrackId, setActiveTrack, addTrack } = useTrackStore();
 
-  const activeTrack = tracks.find(t => t.id === activeTrackId);
-
   const handleTrackChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const trackId = e.target.value;
     setActiveTrack(trackId);

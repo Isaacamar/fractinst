@@ -3,7 +3,6 @@
  */
 
 import type { AudioEngineParams } from '../engines/types';
-import type { SynthModule } from '../systems/ModuleManager';
 import type { ModulePosition } from '../systems/ModuleLayoutManager';
 
 export interface InstrumentConfiguration {

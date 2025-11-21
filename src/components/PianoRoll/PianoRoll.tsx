@@ -18,7 +18,6 @@ interface PianoRollProps {
 export const PianoRoll: React.FC<PianoRollProps> = ({
   transport,
   synthEngine,
-  midiRecorder,
   dawCore,
   onSwitchToInstrument
 }) => {
