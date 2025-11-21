@@ -2,7 +2,7 @@
 
 A low-latency browser-based synthesizer and mini-DAW built with **React**, **TypeScript**, and **Web Audio API**.
 
-## [Link!]([URL](https://isaacamar.github.io/fractinst/))
+## [Live Demo](https://isaacamar.github.io/fractinst/)
 
 
 ## Features
