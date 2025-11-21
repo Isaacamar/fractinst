@@ -29,6 +29,11 @@ document.addEventListener('click', async () => {
         // Connect keyboard controller
         keyboardController.dawCore = dawCore;
         
+        // Initialize MIDI device handler
+        midiDeviceHandler.setDawCore(dawCore);
+        await midiDeviceHandler.initialize();
+        midiDeviceHandler.enable();
+        
         // Initialize piano roll with new system
         if (!pianoRoll && dawCore.transport && dawCore.midiRecorder) {
             pianoRoll = new PianoRoll(dawCore.transport, synthEngine, dawCore.midiRecorder, dawCore);
@@ -41,6 +46,9 @@ const keyboardController = new KeyboardController(synthEngine, {
     layout: 'qwerty',
     octaveOffset: 4
 });
+
+// Initialize MIDI device handler (will be enabled after audio context is ready)
+const midiDeviceHandler = new MidiDeviceHandler(synthEngine, dawCore);
 
 // Initialize keyboard help
 const keyboardHelp = new KeyboardHelp(keyboardController);
@@ -439,29 +447,59 @@ playBtn.addEventListener('click', async () => {
 
 stopBtn.addEventListener('click', () => {
     dawCore.stop();
+    dawCore.stopRecording(); // Also stop recording if active
     synthEngine.stopAllNotes();
     keyboardController.releaseAll();
     playBtn.classList.remove('active');
     recordBtn.classList.remove('active');
-    recordBtn.disabled = true;
+    // Keep record button enabled
 });
 
 recordBtn.addEventListener('click', async () => {
-    if (recordBtn.classList.contains('active')) {
-        dawCore.stopRecording();
-        recordBtn.classList.remove('active');
-    } else {
-        if (!dawCore.isPlaying) {
-            await synthEngine.resumeAudio();
+    try {
+        if (recordBtn.classList.contains('active')) {
+            // Stop recording
+            console.log('Stopping recording...');
+            dawCore.stopRecording();
+            recordBtn.classList.remove('active');
+        } else {
+            // Start recording
+            console.log('=== RECORD BUTTON CLICKED ===');
+            
+            // Ensure audio is initialized
+            if (!synthEngine.context) {
+                console.log('Initializing audio context...');
+                await synthEngine.resumeAudio();
+            }
+            
+            // Ensure DAW core is initialized
             dawCore.setAudioContext(synthEngine.context);
             dawCore.setSynthEngine(synthEngine);
+            
+            if (!dawCore.ensureInitialized()) {
+                console.error('Failed to initialize DAW core for recording');
+                alert('Failed to initialize recording. Check console for details.');
+                return;
+            }
+            
+            console.log('DAW core initialized, calling record()...');
+            await dawCore.record();
+            
+            // Update UI - record button should be active, play button should also be active
+            recordBtn.classList.add('active');
+            playBtn.classList.add('active'); // Record auto-starts playback
+            
+            console.log('Recording started successfully');
         }
-        await dawCore.record();
-        recordBtn.classList.add('active');
+    } catch (error) {
+        console.error('Error with record button:', error);
+        console.error(error.stack);
+        alert('Recording failed: ' + error.message);
     }
 });
 
-recordBtn.disabled = true;
+// Enable record button (can record without playing first)
+recordBtn.disabled = false;
 
 metronomeBtn.addEventListener('click', () => {
     const enabled = dawCore.toggleMetronome();
@@ -547,22 +585,16 @@ viewPianoRollBtn.addEventListener('click', async () => {
 
 // Recording event listeners
 dawCore.on('recordingStart', () => {
-    recordingIndicator.classList.add('recording-active');
-    // Update piano roll in real-time during recording
-    if (pianoRoll && dawCore.midiRecorder) {
-        const updateRecordingDisplay = () => {
-            if (dawCore.isRecording && dawCore.midiRecorder.currentClip) {
-                const clips = dawCore.midiRecorder.getClips();
-                if (clips.length > 0) {
-                    pianoRoll.displayClips(clips);
-                }
-            }
-            if (dawCore.isRecording) {
-                requestAnimationFrame(updateRecordingDisplay);
-            }
-        };
-        updateRecordingDisplay();
+    recordingIndicator.classList.add('recording-lead-in');
+    // Show piano roll view when recording starts
+    if (pianoRoll) {
+        pianoRoll.show();
     }
+});
+
+dawCore.on('recordingActualStart', () => {
+    recordingIndicator.classList.remove('recording-lead-in');
+    recordingIndicator.classList.add('recording-active');
 });
 
 dawCore.on('recordingStop', (data) => {
@@ -614,29 +646,82 @@ dawCore.on('barChanged', (data) => {
     loopDisplay.textContent = `${data.bar + 1}/${Math.ceil(dawCore.loopLengthBars)}`;
 });
 
+// Oscilloscope mode toggle
+const oscilloscopeModeToggle = document.getElementById('oscilloscope-mode-toggle');
+if (oscilloscopeModeToggle) {
+    oscilloscopeModeToggle.addEventListener('click', () => {
+        const currentMode = oscilloscope.getMode();
+        const newMode = currentMode === 'waveform' ? 'cymatic' : 'waveform';
+        oscilloscope.setMode(newMode);
+        
+        // Update button icon
+        const icon = oscilloscopeModeToggle.querySelector('.toggle-icon');
+        if (icon) {
+            icon.textContent = newMode === 'waveform' ? '🌊' : '📊';
+        }
+        
+        // Update title
+        const title = document.querySelector('.oscilloscope-module .module-title');
+        if (title) {
+            title.textContent = newMode === 'waveform' ? 'WAVEFORM' : 'CYMATIC';
+        }
+    });
+}
+
 // Oscilloscope & UI updates
 let lastActiveNoteUpdate = 0;
 const activeNoteUpdateInterval = 100;
 
 oscilloscope.start(() => {
-    const waveformData = synthEngine.getWaveformData();
+    const currentMode = oscilloscope.getMode();
     
-    // Get active frequency for stabilization
-    const activeFreq = synthEngine.getPrimaryActiveFrequency();
-    if (activeFreq && synthEngine.context) {
-        oscilloscope.setExpectedFrequency(activeFreq, synthEngine.context.sampleRate);
-    } else {
-        oscilloscope.setExpectedFrequency(null);
-    }
-    
-    if (waveformData && waveformData.length > 0) {
-        try {
-            oscilloscope.drawWaveform(waveformData);
-        } catch (e) {
-            console.error('Error drawing waveform:', e);
+    if (currentMode === 'cymatic') {
+        // Cymatic mode: use direct frequencies from active voices (more reliable than FFT)
+        const activeFreqs = synthEngine.getActiveFrequencies();
+        if (activeFreqs && activeFreqs.length > 0 && synthEngine.context) {
+            oscilloscope.setActiveFrequencies(activeFreqs);
+            oscilloscope.setExpectedFrequency(null, synthEngine.context.sampleRate);
+            try {
+                oscilloscope.drawWaveform(null); // Will route to drawCymatic
+            } catch (e) {
+                console.error('Error drawing cymatic:', e);
+            }
+        } else {
+            // Fallback to FFT data
+            const frequencyData = synthEngine.getFrequencyData();
+            if (frequencyData) {
+                oscilloscope.setFrequencyData(frequencyData);
+                oscilloscope.setExpectedFrequency(null, synthEngine.context.sampleRate);
+                try {
+                    oscilloscope.drawWaveform(null);
+                } catch (e) {
+                    console.error('Error drawing cymatic:', e);
+                }
+            } else {
+                oscilloscope.clear();
+            }
         }
     } else {
-        oscilloscope.clear();
+        // Waveform mode: use time domain data
+        const waveformData = synthEngine.getWaveformData();
+        
+        // Get active frequency for stabilization
+        const activeFreq = synthEngine.getPrimaryActiveFrequency();
+        if (activeFreq && synthEngine.context) {
+            oscilloscope.setExpectedFrequency(activeFreq, synthEngine.context.sampleRate);
+        } else {
+            oscilloscope.setExpectedFrequency(null);
+        }
+        
+        if (waveformData && waveformData.length > 0) {
+            try {
+                oscilloscope.drawWaveform(waveformData);
+            } catch (e) {
+                console.error('Error drawing waveform:', e);
+            }
+        } else {
+            oscilloscope.clear();
+        }
     }
     
     const now = performance.now();

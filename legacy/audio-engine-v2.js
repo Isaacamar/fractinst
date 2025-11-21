@@ -779,6 +779,17 @@ class LowLatencySynthEngine {
         return this.waveformData;
     }
     
+    /**
+     * Get frequency data for cymatic visualization
+     */
+    getFrequencyData() {
+        if (!this.analyser) return null;
+        const bufferLength = this.analyser.frequencyBinCount;
+        const frequencyData = new Uint8Array(bufferLength);
+        this.analyser.getByteFrequencyData(frequencyData);
+        return frequencyData;
+    }
+    
     getActiveNoteCount() {
         return this.activeVoices.size;
     }
@@ -800,6 +811,24 @@ class LowLatencySynthEngine {
         }
         
         return null;
+    }
+    
+    /**
+     * Get all active frequencies with their amplitudes (for cymatic visualization)
+     */
+    getActiveFrequencies() {
+        const frequencies = [];
+        
+        for (const voice of this.activeVoices.values()) {
+            if (voice && voice.oscillator && voice.envelope) {
+                const freq = voice.oscillator.frequency.value;
+                // Use envelope gain as amplitude proxy
+                const amplitude = voice.envelope.gain.value * 255; // Scale to 0-255 range
+                frequencies.push({ frequency: freq, amplitude: Math.max(1, amplitude) });
+            }
+        }
+        
+        return frequencies;
     }
     
     // Recording methods (same as before)

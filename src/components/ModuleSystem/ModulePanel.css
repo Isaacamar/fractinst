@@ -1,0 +1,91 @@
+/* Module Panels in Main UI */
+.module-panel {
+    opacity: 1;
+    transition: opacity 0.3s, transform 0.2s;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.module-panel.dragging {
+    opacity: 0.9;
+    transform: rotate(3deg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+}
+
+.module-panel.disabled {
+    opacity: 0.4;
+}
+
+.module-panel.disabled .module {
+    border-color: #666;
+}
+
+.module-panel.disabled .module-title {
+    color: #666;
+}
+
+.module-placeholder {
+    border: 2px dashed #666;
+    background: rgba(255, 255, 255, 0.05);
+    min-height: 100px;
+    width: 100%;
+    margin: 5px 0;
+    border-radius: 4px;
+}
+
+.module-header-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.module-panel-toggle,
+.module-panel-close {
+    background: #000;
+    border: 2px solid #fff;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: bold;
+}
+
+.module-panel-toggle:hover {
+    background: #0f0;
+    border-color: #0f0;
+    color: #000;
+    transform: scale(1.15);
+}
+
+.module-panel-close {
+    border-radius: 4px;
+}
+
+.module-panel-close:hover {
+    background: #f00;
+    border-color: #f00;
+    transform: scale(1.15);
+}
+
+.module-content .module-placeholder {
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+    padding: 30px 15px;
+    border: 1px dashed #333;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.drag-preview {
+    box-shadow: 0 10px 40px rgba(0, 255, 0, 0.5);
+    transform: rotate(2deg) scale(1.05);
+}
+

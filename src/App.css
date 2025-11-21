@@ -1,0 +1,81 @@
+.daw-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #000;
+}
+
+.transport-bar-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 20px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+
+.daw-layout {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.left-sidebar {
+  background: #0a0a0a;
+  border-right: 1px solid #333;
+  overflow-y: auto;
+}
+
+.module {
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+
+.module-header {
+  padding: 10px 15px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.module-title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #999;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+/* Oscilloscope container styles are defined in Oscilloscope.css */
+
+.controls-area-wrapper {
+  background: #0a0a0a;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.keyboard-info-module .module-content {
+  padding: 15px;
+}
+
+.info-label {
+  font-size: 10px;
+  color: #999;
+  margin-bottom: 5px;
+}
+
+.active-notes {
+  font-size: 12px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.piano-roll-view {
+  flex: 1;
+  background: #0a0a0a;
+  overflow-y: auto;
+}
+

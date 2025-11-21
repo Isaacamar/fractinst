@@ -1,0 +1,1070 @@
+/**
+ * Bar Graph Oscilloscope
+ * Riemann sum style visualization with small bars
+ */
+
+class ElegantOscilloscope {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        
+        // Visualization mode: 'waveform' or 'cymatic'
+        this.visualizationMode = 'waveform';
+        
+        // Frame averaging for stability
+        this.frameBuffer = [];
+        this.maxFrames = 16; // Increased from 8 to 16 for more stability
+        this.alignedBuffer = null;
+        this.expectedFrequency = null; // Expected frequency for stabilization
+        this.sampleRate = 48000; // Default, will be updated
+        
+        // Frequency data for cymatic visualization
+        this.frequencyData = null;
+        
+        // Real-time cymatic field (2D grid for wave simulation)
+        this.cymaticField = null;
+        this.cymaticFieldWidth = 0;
+        this.cymaticFieldHeight = 0;
+        this.cymaticFieldScale = 1; // Full resolution for sharp, full-size patterns
+        this.cymaticPatternScale = 0; // Animation scale for fade in/out (0.0 to 1.0)
+        this.initializeCymaticField();
+    }
+    
+    /**
+     * Set expected frequency from active notes (for stabilization)
+     */
+    setExpectedFrequency(frequency, sampleRate) {
+        this.expectedFrequency = frequency;
+        if (sampleRate) {
+            this.sampleRate = sampleRate;
+        }
+    }
+    
+    resize() {
+        if (!this.canvas || !this.canvas.parentElement) return;
+        
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        this.canvas.width = rect.width * dpr;
+        this.canvas.height = rect.height * dpr;
+        this.canvas.style.width = rect.width + 'px';
+        this.canvas.style.height = rect.height + 'px';
+        this.ctx.scale(dpr, dpr);
+        this.width = rect.width;
+        this.height = rect.height;
+        
+        // Resize cymatic field when canvas resizes
+        if (this.visualizationMode === 'cymatic') {
+            this.resizeCymaticField();
+        }
+    }
+    
+    /**
+     * Set visualization mode
+     */
+    setMode(mode) {
+        if (mode === 'waveform' || mode === 'cymatic') {
+            this.visualizationMode = mode;
+            this.clear(); // Clear when switching modes
+
+            // Initialize/resize cymatic field when switching to cymatic mode
+            if (mode === 'cymatic' && this.width && this.height) {
+                this.resizeCymaticField();
+                // Reset field to ensure clean start
+                if (this.cymaticField) {
+                    this.cymaticField.current.fill(0);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Get current visualization mode
+     */
+    getMode() {
+        return this.visualizationMode;
+    }
+    
+    /**
+     * Set frequency data for cymatic visualization
+     */
+    setFrequencyData(data) {
+        this.frequencyData = data;
+    }
+    
+    /**
+     * Initialize the cymatic field (2D grid for wave simulation)
+     */
+    initializeCymaticField() {
+        // Will be resized when canvas size is known
+        this.cymaticField = null;
+        this.cymaticFieldWidth = 0;
+        this.cymaticFieldHeight = 0;
+    }
+    
+    /**
+     * Resize cymatic field to match canvas
+     */
+    resizeCymaticField() {
+        if (!this.canvas) return;
+        
+        // Ensure canvas has valid dimensions
+        if (this.canvas.width === 0 || this.canvas.height === 0) {
+            // Canvas not ready yet - will be resized when canvas is properly sized
+            this.cymaticField = null;
+            this.cymaticFieldWidth = 0;
+            this.cymaticFieldHeight = 0;
+            return;
+        }
+
+        // Use actual canvas pixel dimensions (not logical dimensions) for crisp rendering
+        // This ensures 1:1 pixel mapping with ImageData
+        const pixelWidth = this.canvas.width;
+        const pixelHeight = this.canvas.height;
+
+        // Calculate field dimensions based on scale
+        const newFieldWidth = Math.floor(pixelWidth / this.cymaticFieldScale);
+        const newFieldHeight = Math.floor(pixelHeight / this.cymaticFieldScale);
+
+        // Only recreate if dimensions changed
+        if (this.cymaticFieldWidth !== newFieldWidth || this.cymaticFieldHeight !== newFieldHeight) {
+            this.cymaticFieldWidth = newFieldWidth;
+            this.cymaticFieldHeight = newFieldHeight;
+
+            // Single buffer - we calculate standing waves directly each frame
+            this.cymaticField = {
+                current: new Float32Array(this.cymaticFieldWidth * this.cymaticFieldHeight)
+            };
+
+            // Initialize to zero
+            this.cymaticField.current.fill(0);
+        }
+    }
+    
+    /**
+     * Get field value at coordinates
+     */
+    getFieldValue(field, x, y) {
+        if (x < 0 || x >= this.cymaticFieldWidth || y < 0 || y >= this.cymaticFieldHeight) {
+            return 0;
+        }
+        return field[y * this.cymaticFieldWidth + x];
+    }
+    
+    /**
+     * Set field value at coordinates
+     */
+    setFieldValue(field, x, y, value) {
+        if (x < 0 || x >= this.cymaticFieldWidth || y < 0 || y >= this.cymaticFieldHeight) {
+            return;
+        }
+        field[y * this.cymaticFieldWidth + x] = value;
+    }
+    
+    /**
+     * Draw waveform as bar graph (Riemann sum style)
+     * Phase-aligned and averaged for stable standing wave appearance
+     */
+    drawWaveform(data) {
+        // Route to appropriate visualization based on mode
+        if (this.visualizationMode === 'cymatic') {
+            this.drawCymatic();
+            return;
+        }
+        
+        // Waveform mode - check data
+        if (!data || data.length === 0) {
+            this.clear();
+            return;
+        }
+        
+        // Original waveform drawing code continues below...
+        
+        // Normalize and smooth incoming data
+        const bufferLength = data.length;
+        const smoothed = this.smoothData(data, 2); // Increased smoothing
+        
+        // Normalize data to -1 to 1
+        const normalized = new Float32Array(bufferLength);
+        for (let i = 0; i < bufferLength; i++) {
+            normalized[i] = (smoothed[i] / 128.0) - 1.0;
+        }
+        
+        // Phase-align: rotate buffer to start at zero crossing
+        const aligned = this.phaseAlign(normalized);
+        
+        // Add to frame buffer for averaging
+        this.frameBuffer.push(aligned);
+        if (this.frameBuffer.length > this.maxFrames) {
+            this.frameBuffer.shift();
+        }
+        
+        // Average frames for stability
+        const averaged = this.averageFrames(this.frameBuffer);
+        
+        // Detect period (find 2 zero crossings to get period length)
+        const period = this.detectPeriod(averaged);
+        
+        // Display exactly 2 periods
+        let displayLength = bufferLength;
+        let displayStart = 0;
+        
+        if (period > 0 && period < bufferLength / 2) {
+            // Found a valid period - show exactly 2 periods
+            displayLength = period * 2;
+            displayStart = 0; // Start from phase-aligned beginning
+        } else {
+            // No clear period detected, show first portion
+            displayLength = Math.floor(bufferLength * 0.3);
+        }
+        
+        // Ensure we don't exceed buffer bounds
+        displayLength = Math.min(displayLength, averaged.length - displayStart);
+        
+        // Clear canvas with dark background
+        this.ctx.fillStyle = '#0a0a0a';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        
+        // Draw subtle grid
+        this.drawGrid();
+        
+        // Draw center line (subtle)
+        const centerY = this.height / 2;
+        this.ctx.strokeStyle = '#1a1a1a';
+        this.ctx.lineWidth = 1;
+        this.ctx.setLineDash([2, 4]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, centerY);
+        this.ctx.lineTo(this.width, centerY);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+        
+        // Draw minimalist waveform - smooth line with subtle fill
+        const maxAmplitude = this.height * 0.35;
+        
+        // Build path for smooth waveform
+        const points = [];
+        const sampleStep = Math.max(1, Math.floor(displayLength / this.width));
+        
+        for (let i = 0; i < displayLength; i += sampleStep) {
+            const srcIdx = displayStart + i;
+            if (srcIdx >= averaged.length) break;
+            
+            const value = averaged[srcIdx];
+            const y = centerY - (value * maxAmplitude);
+            const x = (i / displayLength) * this.width;
+            points.push({ x, y });
+        }
+        
+        if (points.length > 1) {
+            // Draw filled area (subtle gradient) - covers both positive and negative
+            this.ctx.beginPath();
+            this.ctx.moveTo(points[0].x, centerY);
+            
+            // Draw smooth curve along waveform (top path)
+            for (let i = 0; i < points.length - 1; i++) {
+                const p = points[i];
+                const next = points[i + 1];
+                const midX = (p.x + next.x) / 2;
+                const midY = (p.y + next.y) / 2;
+                
+                if (i === 0) {
+                    this.ctx.lineTo(p.x, p.y);
+                }
+                this.ctx.quadraticCurveTo(p.x, p.y, midX, midY);
+            }
+            
+            // Draw to last point
+            const last = points[points.length - 1];
+            this.ctx.lineTo(last.x, last.y);
+            
+            // Close path back to center line (bottom path)
+            this.ctx.lineTo(last.x, centerY);
+            this.ctx.lineTo(points[0].x, centerY);
+            this.ctx.closePath();
+            
+            // Fill with subtle green gradient
+            const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
+            gradient.addColorStop(0, 'rgba(0, 255, 136, 0.1)');
+            gradient.addColorStop(0.5, 'rgba(0, 255, 136, 0.05)');
+            gradient.addColorStop(1, 'rgba(0, 255, 136, 0.1)');
+            this.ctx.fillStyle = gradient;
+            this.ctx.fill();
+            
+            // Draw main waveform line (smooth, clean)
+            this.ctx.beginPath();
+            this.ctx.moveTo(points[0].x, points[0].y);
+            
+            for (let i = 0; i < points.length - 1; i++) {
+                const p = points[i];
+                const next = points[i + 1];
+                const midX = (p.x + next.x) / 2;
+                const midY = (p.y + next.y) / 2;
+                this.ctx.quadraticCurveTo(p.x, p.y, midX, midY);
+            }
+            
+            // Draw to last point
+            this.ctx.lineTo(last.x, last.y);
+            
+            // Stroke with green color
+            this.ctx.strokeStyle = '#00ff88';
+            this.ctx.lineWidth = 2;
+            this.ctx.lineCap = 'round';
+            this.ctx.lineJoin = 'round';
+            this.ctx.stroke();
+        }
+    }
+    
+    /**
+     * Phase-align waveform to start at zero crossing for stability
+     * Simple approach: shift forward and wrap cleanly without artifacts
+     */
+    phaseAlign(normalizedData) {
+        const bufferLength = normalizedData.length;
+        const aligned = new Float32Array(bufferLength);
+        
+        // Find first zero crossing (rising edge preferred)
+        let zeroCrossingIdx = -1;
+        for (let i = 1; i < bufferLength; i++) {
+            const prev = normalizedData[i - 1];
+            const curr = normalizedData[i];
+            
+            // Detect rising zero crossing (negative to positive)
+            if (prev < 0 && curr >= 0) {
+                zeroCrossingIdx = i;
+                break;
+            }
+        }
+        
+        // If no rising zero crossing found, try falling edge
+        if (zeroCrossingIdx === -1) {
+            for (let i = 1; i < bufferLength; i++) {
+                const prev = normalizedData[i - 1];
+                const curr = normalizedData[i];
+                
+                if (prev >= 0 && curr < 0) {
+                    zeroCrossingIdx = i;
+                    break;
+                }
+            }
+        }
+        
+        // Rotate buffer to start at zero crossing, but wrap cleanly
+        if (zeroCrossingIdx > 0 && zeroCrossingIdx < bufferLength) {
+            // Copy from zero crossing to end
+            const remaining = bufferLength - zeroCrossingIdx;
+            for (let i = 0; i < remaining; i++) {
+                aligned[i] = normalizedData[zeroCrossingIdx + i];
+            }
+            
+            // Wrap around: copy from beginning to zero crossing
+            for (let i = 0; i < zeroCrossingIdx; i++) {
+                aligned[remaining + i] = normalizedData[i];
+            }
+        } else {
+            // No zero crossing found, use original data
+            aligned.set(normalizedData);
+        }
+        
+        return aligned;
+    }
+    
+    /**
+     * Detect period length by finding zero crossings
+     * Uses expected frequency if available for better stability
+     */
+    detectPeriod(normalizedData) {
+        const bufferLength = normalizedData.length;
+        
+        // If we have an expected frequency, calculate expected period
+        if (this.expectedFrequency && this.expectedFrequency > 0) {
+            const expectedPeriod = Math.round(this.sampleRate / this.expectedFrequency);
+            // Validate expected period is reasonable
+            if (expectedPeriod > 10 && expectedPeriod < bufferLength / 2) {
+                // Use expected period but verify with zero crossings
+                const zeroCrossings = [];
+                for (let i = 1; i < bufferLength; i++) {
+                    const prev = normalizedData[i - 1];
+                    const curr = normalizedData[i];
+                    if (prev < 0 && curr >= 0) {
+                        zeroCrossings.push(i);
+                    }
+                }
+                
+                // If we have zero crossings, use them to refine
+                if (zeroCrossings.length >= 2) {
+                    let sumPeriods = 0;
+                    let count = 0;
+                    const crossingsToUse = Math.min(3, zeroCrossings.length - 1);
+                    for (let i = 0; i < crossingsToUse; i++) {
+                        const period = zeroCrossings[i + 1] - zeroCrossings[i];
+                        // Accept periods close to expected (within 20%)
+                        if (Math.abs(period - expectedPeriod) < expectedPeriod * 0.2) {
+                            sumPeriods += period;
+                            count++;
+                        }
+                    }
+                    
+                    if (count > 0) {
+                        return Math.round(sumPeriods / count);
+                    }
+                }
+                
+                // Fall back to expected period
+                return expectedPeriod;
+            }
+        }
+        
+        // Fallback: detect period from zero crossings
+        const zeroCrossings = [];
+        for (let i = 1; i < bufferLength; i++) {
+            const prev = normalizedData[i - 1];
+            const curr = normalizedData[i];
+            
+            // Detect zero crossing (rising edge preferred)
+            if (prev < 0 && curr >= 0) {
+                zeroCrossings.push(i);
+            }
+        }
+        
+        // Need at least 3 zero crossings to detect 2 periods
+        if (zeroCrossings.length < 3) {
+            return 0; // No clear period
+        }
+        
+        // Calculate average period from first few zero crossings
+        let sumPeriods = 0;
+        let count = 0;
+        
+        // Use first 3-4 crossings to get average period
+        const crossingsToUse = Math.min(4, zeroCrossings.length - 1);
+        for (let i = 0; i < crossingsToUse; i++) {
+            const period = zeroCrossings[i + 1] - zeroCrossings[i];
+            if (period > 10 && period < bufferLength / 4) { // Reasonable period range
+                sumPeriods += period;
+                count++;
+            }
+        }
+        
+        if (count === 0) {
+            return 0; // No valid periods found
+        }
+        
+        const avgPeriod = Math.round(sumPeriods / count);
+        return avgPeriod;
+    }
+    
+    /**
+     * Average multiple frames to reduce jitter
+     */
+    averageFrames(frames) {
+        if (frames.length === 0) return new Float32Array(0);
+        if (frames.length === 1) return frames[0];
+        
+        const bufferLength = frames[0].length;
+        const averaged = new Float32Array(bufferLength);
+        
+        for (let i = 0; i < bufferLength; i++) {
+            let sum = 0;
+            for (let j = 0; j < frames.length; j++) {
+                sum += frames[j][i];
+            }
+            averaged[i] = sum / frames.length;
+        }
+        
+        return averaged;
+    }
+    
+    /**
+     * Detect key points: zero crossings, peaks, and troughs
+     */
+    detectKeyPoints(normalizedData) {
+        const keyPoints = [0]; // Always start at beginning
+        const threshold = 0.05; // Threshold for zero crossing detection
+        
+        for (let i = 1; i < normalizedData.length - 1; i++) {
+            const prev = normalizedData[i - 1];
+            const curr = normalizedData[i];
+            const next = normalizedData[i + 1];
+            
+            // Detect zero crossing (sign change)
+            if ((prev >= 0 && curr < 0) || (prev < 0 && curr >= 0)) {
+                // Find the exact zero crossing point
+                if (Math.abs(curr) < threshold) {
+                    keyPoints.push(i);
+                } else if (Math.abs(prev) < Math.abs(curr)) {
+                    keyPoints.push(i - 1);
+                } else {
+                    keyPoints.push(i);
+                }
+            }
+            // Detect local peaks (maxima)
+            else if (curr > prev && curr > next && curr > 0.1) {
+                keyPoints.push(i);
+            }
+            // Detect local troughs (minima)
+            else if (curr < prev && curr < next && curr < -0.1) {
+                keyPoints.push(i);
+            }
+        }
+        
+        // Always end at the last point
+        keyPoints.push(normalizedData.length - 1);
+        
+        // Remove duplicates and sort
+        const unique = [...new Set(keyPoints)].sort((a, b) => a - b);
+        
+        return unique;
+    }
+    
+    /**
+     * Smooth data using moving average with stronger filtering
+     */
+    smoothData(data, windowSize) {
+        const smoothed = new Uint8Array(data.length);
+        
+        // Apply multiple passes for stronger smoothing
+        const passes = 2;
+        let current = new Uint8Array(data);
+        
+        for (let pass = 0; pass < passes; pass++) {
+            for (let i = 0; i < data.length; i++) {
+                let sum = 0;
+                let count = 0;
+                
+                for (let j = -windowSize; j <= windowSize; j++) {
+                    const idx = i + j;
+                    if (idx >= 0 && idx < data.length) {
+                        sum += current[idx];
+                        count++;
+                    }
+                }
+                
+                smoothed[i] = sum / count;
+            }
+            current.set(smoothed);
+        }
+        
+        return smoothed;
+    }
+    
+    /**
+     * Draw grid
+     */
+    drawGrid() {
+        this.ctx.strokeStyle = '#151515';
+        this.ctx.lineWidth = 0.5;
+        
+        // Vertical lines
+        for (let i = 0; i <= 10; i++) {
+            const x = (this.width / 10) * i;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.height);
+            this.ctx.stroke();
+        }
+        
+        // Horizontal lines
+        for (let i = 0; i <= 8; i++) {
+            const y = (this.height / 8) * i;
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.width, y);
+            this.ctx.stroke();
+        }
+    }
+    
+    /**
+     * Draw cymatic visualization - real-time 2D wave field simulation
+     */
+    drawCymatic() {
+        // Initialize field if needed - ensure it matches canvas size
+        if (!this.cymaticField || this.cymaticFieldWidth === 0 || this.cymaticFieldHeight === 0) {
+            this.resizeCymaticField();
+        }
+        
+        // Verify field size matches canvas size
+        const pixelWidth = this.canvas.width;
+        const pixelHeight = this.canvas.height;
+        if (this.cymaticFieldWidth !== pixelWidth || this.cymaticFieldHeight !== pixelHeight) {
+            // Field size mismatch - resize it
+            this.resizeCymaticField();
+        }
+        
+        if (!this.cymaticField || !this.frequencyData || this.frequencyData.length === 0) {
+            // Clear with black background
+            this.ctx.fillStyle = '#000000';
+            this.ctx.fillRect(0, 0, this.width, this.height);
+            // Draw placeholder when no data
+            this.ctx.fillStyle = '#666';
+            this.ctx.font = '12px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('No frequency data', this.width / 2, this.height / 2);
+            return;
+        }
+        
+        // Update wave field based on frequency data
+        this.updateCymaticField();
+        
+        // Render the field (this will clear and draw the pattern)
+        this.renderCymaticField();
+    }
+    
+    /**
+     * Simplified Bessel function approximation for J0(x)
+     */
+    besselJ0(x) {
+        const ax = Math.abs(x);
+        if (ax < 8.0) {
+            const y = x * x;
+            return (1.0 - y * (0.25 - y * (0.015625 - y * 0.000434028)));
+        } else {
+            const z = 8.0 / ax;
+            const y = z * z;
+            const xx = ax - 0.785398164;
+            return Math.sqrt(0.636619772 / ax) *
+                   (Math.cos(xx) * (1.0 - y * 0.00390625) -
+                    Math.sin(xx) * z * 0.125);
+        }
+    }
+
+    /**
+     * Map frequency to Chladni mode numbers (n, m) for rectangular patterns
+     * n = number of nodal lines in x direction
+     * m = number of nodal lines in y direction
+     */
+    frequencyToModes(frequency) {
+        // Piano range: A0 (27.5 Hz) to C8 (4186 Hz)
+        const minFreq = 27.5;
+        const maxFreq = 4186;
+
+        // Convert to log scale (0 to 88 for 88 keys)
+        const logMin = Math.log(minFreq);
+        const logMax = Math.log(maxFreq);
+        const logFreq = Math.log(Math.max(minFreq, Math.min(maxFreq, frequency)));
+        const keyIndex = Math.floor(((logFreq - logMin) / (logMax - logMin)) * 87);
+
+        const octave = Math.floor(keyIndex / 12);
+        const noteInOctave = keyIndex % 12;
+
+        // Mode numbers for rectangular patterns (n, m)
+        const nPattern = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6];
+        const mPattern = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+
+        const baseN = nPattern[noteInOctave];
+        const baseM = mPattern[noteInOctave];
+        
+        // Increase complexity with octave
+        const n = Math.min(8, baseN + Math.floor(octave / 2));
+        const m = Math.min(8, baseM + Math.floor(octave / 2));
+
+        return { n: n, m: m };
+    }
+
+    /**
+     * Update cymatic field - rectangular Chladni patterns using wave equation
+     * u(x,y) = sin(nπx/L) * sin(mπy/L) for clamped boundaries
+     */
+    updateCymaticField() {
+        const field = this.cymaticField;
+        const width = this.cymaticFieldWidth;
+        const height = this.cymaticFieldHeight;
+
+        if (!field || !width || !height) return;
+
+        // Analyze frequency data
+        const dataLength = this.frequencyData.length;
+        const nyquist = this.sampleRate / 2;
+        const binSize = nyquist / dataLength;
+
+        // Find dominant frequencies (lower threshold to catch more frequencies)
+        const frequencies = [];
+        let maxAmp = 0;
+        for (let i = 1; i < Math.min(dataLength, 200); i++) {
+            const amplitude = this.frequencyData[i];
+            if (amplitude > maxAmp) maxAmp = amplitude;
+            if (amplitude > 5) { // Lower threshold
+                const frequency = i * binSize;
+                frequencies.push({ frequency, amplitude });
+            }
+        }
+
+        // Sort by amplitude and take top 2
+        frequencies.sort((a, b) => b.amplitude - a.amplitude);
+        const topFreqs = frequencies.slice(0, 2);
+        
+        // If we have frequencies but they're weak, still use them but boost visibility
+        if (topFreqs.length === 0 && maxAmp > 0) {
+            // Find the strongest frequency even if below threshold
+            let bestIdx = 1;
+            let bestAmp = 0;
+            for (let i = 1; i < Math.min(dataLength, 200); i++) {
+                if (this.frequencyData[i] > bestAmp) {
+                    bestAmp = this.frequencyData[i];
+                    bestIdx = i;
+                }
+            }
+            if (bestAmp > 0) {
+                topFreqs.push({ frequency: bestIdx * binSize, amplitude: bestAmp });
+            }
+        }
+
+        // Calculate target pattern
+        const targetField = new Float32Array(width * height);
+        targetField.fill(0);
+
+        // Animate pattern scale: fade in when sound present, fade out when silent
+        const scaleSpeed = 0.15; // Speed of scale animation (higher = faster)
+        const targetScale = topFreqs.length > 0 ? 1.0 : 0.0;
+        this.cymaticPatternScale += (targetScale - this.cymaticPatternScale) * scaleSpeed;
+        
+        // Clamp scale to [0, 1]
+        this.cymaticPatternScale = Math.max(0, Math.min(1, this.cymaticPatternScale));
+
+        if (topFreqs.length === 0) {
+            // No sound - fade out pattern gradually (don't clear immediately)
+            // The scale will animate to 0, and rendering will handle the fade-out
+            if (this.cymaticPatternScale < 0.01) {
+                // Only clear when scale is very small to avoid rendering overhead
+                field.current.fill(0);
+            }
+            // Continue with morphing to allow smooth fade-out
+        }
+
+        // Compute Chladni pattern for each frequency
+        for (const freq of topFreqs) {
+            // Normalize amplitude, but ensure minimum visibility
+            const normalizedAmp = Math.max(0.3, Math.min(1.0, freq.amplitude / 255));
+            const modes = this.frequencyToModes(freq.frequency);
+            let n = modes.n;
+            let m = modes.m;
+            
+            // Ensure at least one direction has variation for visibility
+            if (n === 0 && m === 0) {
+                n = 1;
+                m = 1;
+            }
+
+            // Compute rectangular Chladni pattern: u(x,y) = sin(nπx/Lx) * sin(mπy/Ly)
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    
+                    // Normalized coordinates [0, 1]
+                    const xNorm = x / width;
+                    const yNorm = y / height;
+                    
+                    // Wave function components
+                    let X_n = 1.0;
+                    let Y_m = 1.0;
+                    
+                    if (n > 0) {
+                        X_n = Math.sin(n * Math.PI * xNorm);
+                    }
+                    
+                    if (m > 0) {
+                        Y_m = Math.sin(m * Math.PI * yNorm);
+                    }
+                    
+                    // Combine: u(x,y) = X_n(x) * Y_m(y)
+                    const u = X_n * Y_m;
+                    
+                    // Visualize |u|^2 (particle density)
+                    const density = u * u;
+                    
+                    // Add to pattern with amplitude weighting
+                    targetField[idx] += density * normalizedAmp;
+                }
+            }
+        }
+
+        // Normalize target field
+        let maxVal = 0;
+        for (let i = 0; i < targetField.length; i++) {
+            if (targetField[i] > maxVal) maxVal = targetField[i];
+        }
+        if (maxVal > 0) {
+            for (let i = 0; i < targetField.length; i++) {
+                targetField[i] /= maxVal;
+            }
+        }
+
+        // Smooth interpolation from current to target
+        const morphSpeed = 0.2;
+        for (let i = 0; i < field.current.length; i++) {
+            field.current[i] += (targetField[i] - field.current[i]) * morphSpeed;
+        }
+    }
+    
+    /**
+     * Render the cymatic field to canvas - monochromatic Chladni patterns
+     */
+    renderCymaticField() {
+        const field = this.cymaticField;
+        const fieldWidth = this.cymaticFieldWidth;
+        const fieldHeight = this.cymaticFieldHeight;
+
+        if (!field || !field.current || fieldWidth === 0 || fieldHeight === 0) {
+            // Clear with black background if no field
+            this.ctx.fillStyle = '#000000';
+            this.ctx.fillRect(0, 0, this.width, this.height);
+            return;
+        }
+
+        // Check if pattern has content
+        let maxVal = 0;
+        for (let i = 0; i < field.current.length; i++) {
+            if (field.current[i] > maxVal) maxVal = field.current[i];
+        }
+
+        if (maxVal < 0.001) {
+            // Clear with black background if no pattern
+            this.ctx.fillStyle = '#000000';
+            this.ctx.fillRect(0, 0, this.width, this.height);
+            return;
+        }
+
+        // Save context state
+        this.ctx.save();
+        
+        // Reset transformation matrix to identity for putImageData
+        // putImageData works in device pixels and ignores transformations,
+        // but we want to ensure clean state
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        
+        // Disable smoothing for crisp pixel rendering
+        this.ctx.imageSmoothingEnabled = false;
+
+        // Use actual canvas pixel dimensions for ImageData (not logical dimensions)
+        // This ensures full resolution and crisp rendering
+        const pixelWidth = this.canvas.width;
+        const pixelHeight = this.canvas.height;
+        
+        // Create ImageData with actual pixel dimensions
+        const imageData = this.ctx.createImageData(pixelWidth, pixelHeight);
+        const data = imageData.data;
+
+        // First, clear entire canvas to black
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 0;     // R
+            data[i + 1] = 0; // G
+            data[i + 2] = 0; // B
+            data[i + 3] = 255; // A
+        }
+
+        // Render pattern monochromatically - fill entire canvas
+        // Field matches canvas pixel dimensions exactly (1:1 mapping)
+        // Ensure field dimensions match - if not, we'll only render what we have
+        const renderWidth = Math.min(fieldWidth, pixelWidth);
+        const renderHeight = Math.min(fieldHeight, pixelHeight);
+        
+        // Apply scale transformation: pattern scales from center
+        const scale = this.cymaticPatternScale;
+        const pixelCenterX = pixelWidth / 2;
+        const pixelCenterY = pixelHeight / 2;
+        const fieldCenterX = fieldWidth / 2;
+        const fieldCenterY = fieldHeight / 2;
+        
+        // Ultra-sharp white lines rendering - hard threshold for pixel-perfect lines
+        const threshold = 0.25; // Threshold for white lines
+        // Use hard step function for maximum sharpness (no blur)
+        const hardThreshold = (value) => value > threshold ? 1.0 : 0.0;
+        
+        for (let py = 0; py < renderHeight; py++) {
+            for (let px = 0; px < renderWidth; px++) {
+                // Apply scale transformation: pattern grows from center as scale increases
+                // When scale = 0.0: pattern starts small at center, scale = 1.0: full pattern
+                const dx = px - pixelCenterX;
+                const dy = py - pixelCenterY;
+                
+                // Scale the offset from center (multiply by scale to grow from center)
+                // When scale is small, we sample from smaller area (pattern appears small)
+                // When scale is large, we sample from larger area (pattern appears full size)
+                const scaledDx = dx * scale;
+                const scaledDy = dy * scale;
+                
+                // Map back to field coordinates (centered in field)
+                const fx = Math.floor(fieldCenterX + scaledDx);
+                const fy = Math.floor(fieldCenterY + scaledDy);
+                
+                // Only render if scaled coordinates are within field bounds and scale is significant
+                if (fx < 0 || fx >= fieldWidth || fy < 0 || fy >= fieldHeight || scale < 0.01) {
+                    // Outside scaled bounds or scale too small - leave as black
+                    continue;
+                }
+                
+                // Get field value at scaled coordinates
+                const idx = fy * fieldWidth + fx;
+                const value = field.current[idx];
+
+                // Normalize value to [0, 1]
+                const normalized = Math.max(0, Math.min(1, value));
+                
+                // Use hard threshold for ultra-sharp white lines (no gradient, pure on/off)
+                const thresholded = hardThreshold(normalized);
+                
+                // Convert to pure white (255) or black (0), fade brightness with scale
+                // Scale affects both size and brightness for smooth fade
+                const brightness = Math.floor(thresholded * 255 * scale);
+
+                const pixelIdx = (py * pixelWidth + px) * 4;
+                // Ultra-sharp white lines on black background - pixel perfect, no blur
+                data[pixelIdx] = brightness;     // R
+                data[pixelIdx + 1] = brightness; // G
+                data[pixelIdx + 2] = brightness; // B
+                data[pixelIdx + 3] = 255;       // A
+            }
+        }
+
+        // Put image data to canvas at device pixel coordinates (0, 0)
+        // This fills the entire canvas regardless of context transformations
+        this.ctx.putImageData(imageData, 0, 0);
+        
+        // Restore context state (restores DPR scaling for other operations)
+        this.ctx.restore();
+    }
+    
+    /**
+     * Draw a single cymatic pattern (circular with nodes)
+     * Natural, realistic appearance like sand/water patterns
+     */
+    drawCymaticPattern(centerX, centerY, radius, nodeCount, amplitude) {
+        // Natural colors: white/light gray on dark background
+        // Brightness varies with amplitude (more amplitude = brighter)
+        const brightness = Math.floor(180 + (amplitude * 75)); // 180-255 range
+        const grayValue = `rgb(${brightness}, ${brightness}, ${brightness})`;
+        const lightGrayValue = `rgba(${brightness}, ${brightness}, ${brightness}, 0.6)`;
+        
+        this.ctx.strokeStyle = grayValue;
+        this.ctx.fillStyle = lightGrayValue;
+        this.ctx.lineWidth = 1.5;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        
+        // Draw smooth outer circle with subtle gradient effect
+        const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+        gradient.addColorStop(0, `rgba(${brightness}, ${brightness}, ${brightness}, 0.4)`);
+        gradient.addColorStop(0.5, `rgba(${brightness}, ${brightness}, ${brightness}, 0.2)`);
+        gradient.addColorStop(1, `rgba(${brightness}, ${brightness}, ${brightness}, 0)`);
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Draw nodes (antinodes) - brighter spots where material accumulates
+        const nodeRadius = radius * 0.08;
+        const nodeBrightness = Math.min(255, brightness + 30);
+        const nodeColor = `rgb(${nodeBrightness}, ${nodeBrightness}, ${nodeBrightness})`;
+        
+        for (let i = 0; i < nodeCount; i++) {
+            const angle = (i / nodeCount) * Math.PI * 2;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            
+            // Draw node with soft glow
+            const nodeGradient = this.ctx.createRadialGradient(x, y, 0, x, y, nodeRadius * 2);
+            nodeGradient.addColorStop(0, `rgba(${nodeBrightness}, ${nodeBrightness}, ${nodeBrightness}, 0.9)`);
+            nodeGradient.addColorStop(0.5, `rgba(${nodeBrightness}, ${nodeBrightness}, ${nodeBrightness}, 0.5)`);
+            nodeGradient.addColorStop(1, `rgba(${nodeBrightness}, ${nodeBrightness}, ${nodeBrightness}, 0)`);
+            
+            this.ctx.fillStyle = nodeGradient;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, nodeRadius * 2, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Draw solid center of node
+            this.ctx.fillStyle = nodeColor;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, nodeRadius * 0.6, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        
+        // Draw smooth connecting curves (standing wave patterns)
+        // Use bezier curves for more organic appearance
+        this.ctx.strokeStyle = `rgba(${brightness}, ${brightness}, ${brightness}, 0.4)`;
+        this.ctx.lineWidth = 1;
+        
+        if (nodeCount > 1) {
+            for (let i = 0; i < nodeCount; i++) {
+                const angle1 = (i / nodeCount) * Math.PI * 2;
+                const angle2 = ((i + 1) % nodeCount / nodeCount) * Math.PI * 2;
+                
+                const x1 = centerX + Math.cos(angle1) * radius;
+                const y1 = centerY + Math.sin(angle1) * radius;
+                const x2 = centerX + Math.cos(angle2) * radius;
+                const y2 = centerY + Math.sin(angle2) * radius;
+                
+                // Control point for smooth curve (pulled toward center)
+                const midAngle = (angle1 + angle2) / 2;
+                const controlRadius = radius * 0.7;
+                const cx = centerX + Math.cos(midAngle) * controlRadius;
+                const cy = centerY + Math.sin(midAngle) * controlRadius;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(x1, y1);
+                this.ctx.quadraticCurveTo(cx, cy, x2, y2);
+                this.ctx.stroke();
+            }
+        }
+        
+        // Draw inner patterns (concentric rings) - subtler
+        for (let ring = 1; ring <= 2; ring++) {
+            const ringRadius = radius * (0.25 + ring * 0.15);
+            const ringNodes = Math.max(2, Math.floor(nodeCount * (0.4 + ring * 0.15)));
+            const ringBrightness = Math.floor(brightness * (0.6 / ring));
+            
+            this.ctx.strokeStyle = `rgba(${ringBrightness}, ${ringBrightness}, ${ringBrightness}, 0.3)`;
+            this.ctx.lineWidth = 0.8;
+            
+            // Draw ring circle
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+            this.ctx.stroke();
+            
+            // Draw ring nodes (smaller, subtler)
+            const ringNodeRadius = nodeRadius * 0.5;
+            for (let i = 0; i < ringNodes; i++) {
+                const angle = (i / ringNodes) * Math.PI * 2;
+                const x = centerX + Math.cos(angle) * ringRadius;
+                const y = centerY + Math.sin(angle) * ringRadius;
+                
+                this.ctx.fillStyle = `rgba(${ringBrightness}, ${ringBrightness}, ${ringBrightness}, 0.5)`;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, ringNodeRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+        
+        // Reset styles
+        this.ctx.globalAlpha = 1.0;
+    }
+    
+    /**
+     * Clear canvas
+     */
+    clear() {
+        this.ctx.fillStyle = '#0a0a0a';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        if (this.visualizationMode === 'waveform') {
+            this.drawGrid();
+        }
+        // Reset frame buffer when clearing
+        this.frameBuffer = [];
+    }
+    
+    /**
+     * Start animation loop
+     */
+    start(updateCallback) {
+        const animate = () => {
+            if (updateCallback) {
+                updateCallback();
+            }
+            requestAnimationFrame(animate);
+        };
+        animate();
+    }
+}

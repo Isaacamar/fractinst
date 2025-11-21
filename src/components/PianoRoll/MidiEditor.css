@@ -1,0 +1,214 @@
+.midi-editor-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #111;
+  height: 100%;
+  user-select: none;
+}
+
+.midi-editor-toolbar {
+  height: 40px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  justify-content: space-between;
+}
+
+.editor-track-info {
+  font-weight: bold;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.editor-tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.tool-info {
+  font-size: 12px;
+  color: #888;
+}
+
+.editor-btn {
+  background: #333;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.editor-btn:hover {
+  background: #444;
+  color: #fff;
+}
+
+.editor-close-btn {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.editor-close-btn:hover {
+  color: #fff;
+}
+
+.piano-roll-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.piano-keys-sidebar {
+  width: 60px;
+  background: #0a0a0a;
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.piano-keys-header {
+  height: 30px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.piano-keys-list {
+  flex: 1;
+  overflow: hidden; /* Synced with grid via ref usually, for now static */
+  position: relative;
+}
+
+.piano-key {
+  height: 20px;
+  border-bottom: 1px solid #222;
+  background: #fff;
+  color: #000;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 5px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.piano-key.black-key {
+  background: #000;
+  color: #fff;
+  border-bottom: 1px solid #333;
+}
+
+.piano-roll-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.piano-roll-header {
+  height: 30px;
+  background: #111;
+  border-bottom: 1px solid #333;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.time-ruler {
+  height: 100%;
+  display: flex;
+  color: #666;
+  font-size: 10px;
+  align-items: flex-end;
+  padding-bottom: 2px;
+}
+
+.ruler-bar {
+  border-left: 1px solid #333;
+  padding-left: 4px;
+  height: 50%;
+}
+
+.piano-roll-grid-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background: #000;
+  cursor: crosshair;
+}
+
+.piano-roll-grid {
+  position: relative;
+  background-image: 
+    linear-gradient(to right, #1a1a1a 1px, transparent 1px);
+  background-size: 25px 100%; /* Grid vertical lines */
+}
+
+.piano-roll-row {
+  border-bottom: 1px solid #151515;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.piano-roll-row.black-row {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.playback-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #00ff88;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 0 8px #00ff88;
+}
+
+.midi-note {
+  position: absolute;
+  z-index: 50;
+  box-sizing: border-box;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 3px;
+  cursor: grab;
+  overflow: hidden;
+}
+
+.midi-note.selected {
+  box-shadow: 0 0 0 2px #fff;
+  z-index: 60;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  background: rgba(0,0,0,0.2);
+  cursor: col-resize;
+}
+
+.resize-handle:hover {
+  background: rgba(255,255,255,0.3);
+}

@@ -60,6 +60,8 @@ class DAWCore {
     setupTransportCallbacks() {
         let lastBeat = -1;
         let lastBar = -1;
+        let leadInBeatCount = 0;
+        let isLeadIn = false;
 
         this.transport.onUpdate((timeSeconds) => {
             const currentBeat = Math.floor(this.transport.getCurrentBeat());
@@ -80,6 +82,15 @@ class DAWCore {
                     const frequency = beatInBar === 0 ? 1000 : 600;
                     this.synthEngine.playMetronomeClick(frequency, 0.1);
                 }
+
+                // Track lead-in beats
+                if (isLeadIn) {
+                    leadInBeatCount++;
+                    if (leadInBeatCount >= 4) {
+                        isLeadIn = false;
+                        leadInBeatCount = 0;
+                    }
+                }
             }
 
             // Emit bar changed event
@@ -97,6 +108,10 @@ class DAWCore {
                 this.emit('loopComplete');
             }
         });
+
+        // Store lead-in state tracker
+        this.leadInBeatCount = () => leadInBeatCount;
+        this.setLeadIn = (value) => { isLeadIn = value; leadInBeatCount = 0; };
     }
 
     /**
@@ -190,34 +205,127 @@ class DAWCore {
     }
 
     /**
-     * Start recording
+     * Start recording with lead-in metronome
+     * Auto-starts playback if not already playing
      */
     async record() {
         if (!this.transport || !this.midiRecorder) {
             console.error('Transport or MidiRecorder not initialized.');
+            console.log('Transport:', this.transport);
+            console.log('MidiRecorder:', this.midiRecorder);
+            throw new Error('Transport or MidiRecorder not initialized');
+        }
+
+        // If already recording, don't start again
+        if (this.transport.isRecording) {
+            console.log('Already recording');
             return;
         }
 
-        // Start transport if not playing
+        console.log('=== STARTING RECORDING ===');
+        console.log('Transport state before:', {
+            isPlaying: this.transport.isPlaying,
+            position: this.transport.position,
+            currentBeat: this.transport.getCurrentBeat()
+        });
+
+        // Reset transport to start
+        this.transport.seek(0);
+        console.log('Reset transport to position 0');
+
+        // ALWAYS start transport (record should auto-play)
+        const wasPlaying = this.transport.isPlaying;
         if (!this.transport.isPlaying) {
+            console.log('Starting transport playback...');
             await this.transport.play();
             this.playbackScheduler.start();
+            this.emit('playbackStart'); // Emit so UI can update play button
+            console.log('Transport started, isPlaying:', this.transport.isPlaying);
+        } else {
+            console.log('Transport already playing');
         }
 
-        // Start MIDI recording
+        // Small delay to ensure transport is actually running
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // Emit recording start (lead-in phase)
         this.transport.isRecording = true;
-        this.midiRecorder.startRecording();
         this.emit('recordingStart');
+        console.log('Emitted recordingStart event');
+
+        // Lead-in: 4 beats of metronome before actual recording starts
+        const leadInBeats = 4;
+        const startBeat = Math.floor(this.transport.getCurrentBeat());
+        const targetBeat = startBeat + leadInBeats;
+
+        console.log('Starting lead-in: from beat', startBeat, 'to beat', targetBeat);
+        console.log('Current transport time:', this.transport.getCurrentTime(), 'seconds');
+
+        // Enable metronome for lead-in
+        const wasMetronomeEnabled = this.metronomeEnabled;
+        this.setMetronomeEnabled(true);
+        if (this.setLeadIn) this.setLeadIn(true);
+        console.log('Metronome enabled for lead-in');
+
+        // Wait for lead-in to complete (check on beat changes)
+        let checkCount = 0;
+        const checkLeadIn = () => {
+            checkCount++;
+            
+            // Safety check - ensure transport is still playing
+            if (!this.transport.isPlaying) {
+                console.error('Transport stopped during lead-in!');
+                return;
+            }
+            
+            const currentBeat = Math.floor(this.transport.getCurrentBeat());
+            const currentTime = this.transport.getCurrentTime();
+            
+            // Debug every 10 frames
+            if (checkCount % 10 === 0) {
+                console.log(`Lead-in check ${checkCount}: beat ${currentBeat.toFixed(2)}, target ${targetBeat}`);
+            }
+            
+            if (currentBeat >= targetBeat) {
+                // Lead-in complete, start actual recording
+                console.log('=== LEAD-IN COMPLETE ===');
+                console.log('Starting actual recording at beat', currentBeat, 'time', currentTime);
+                this.midiRecorder.startRecording();
+                this.emit('recordingActualStart');
+                // Restore metronome state
+                this.setMetronomeEnabled(wasMetronomeEnabled);
+                if (this.setLeadIn) this.setLeadIn(false);
+            } else {
+                // Continue checking
+                if (checkCount < 10000) { // Safety limit
+                    requestAnimationFrame(checkLeadIn);
+                } else {
+                    console.error('Lead-in check timeout after', checkCount, 'frames');
+                    console.error('Final beat:', currentBeat, 'Target:', targetBeat);
+                }
+            }
+        };
+        checkLeadIn();
     }
 
     /**
      * Stop recording
      */
     stopRecording() {
-        if (!this.midiRecorder) return;
+        if (!this.midiRecorder) {
+            console.warn('MidiRecorder not initialized, cannot stop recording');
+            return;
+        }
+
+        // Only stop if actually recording
+        if (!this.transport.isRecording && !this.midiRecorder.isRecording) {
+            return;
+        }
 
         const clip = this.midiRecorder.stopRecording();
         this.transport.isRecording = false;
+
+        console.log('Recording stopped. Clip:', clip);
 
         this.emit('recordingStop', {
             clip: clip,

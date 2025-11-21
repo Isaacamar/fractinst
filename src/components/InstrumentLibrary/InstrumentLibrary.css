@@ -1,0 +1,176 @@
+.instrument-library-module {
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.instrument-library-module .module-header {
+  padding: 10px 15px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.instrument-library-module .module-header:hover {
+  background: #222;
+}
+
+.expand-icon {
+  color: #666;
+  font-size: 10px;
+}
+
+.instrument-library-content {
+  padding: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.library-actions {
+  margin-bottom: 15px;
+}
+
+.save-btn {
+  width: 100%;
+  padding: 8px;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-btn:hover {
+  background: #444;
+}
+
+.save-dialog {
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #222;
+  border: 1px solid #444;
+}
+
+.save-input {
+  width: 100%;
+  padding: 6px;
+  background: #111;
+  border: 1px solid #555;
+  color: #fff;
+  font-size: 11px;
+  margin-bottom: 8px;
+  box-sizing: border-box;
+}
+
+.save-input:focus {
+  outline: none;
+  border-color: #00ff88;
+}
+
+.save-dialog-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.save-dialog-actions button {
+  flex: 1;
+  padding: 6px;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-dialog-actions button:hover:not(:disabled) {
+  background: #444;
+}
+
+.save-dialog-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.instrument-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.instrument-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: #222;
+  border: 1px solid #333;
+}
+
+.instrument-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.instrument-name {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.preset-badge {
+  padding: 2px 6px;
+  background: #00ff88;
+  color: #000;
+  font-size: 8px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.instrument-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.load-btn,
+.delete-btn {
+  padding: 4px 8px;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+  min-width: 40px;
+}
+
+.load-btn:hover {
+  background: #00ff88;
+  color: #000;
+}
+
+.delete-btn:hover {
+  background: #ff4444;
+  color: #fff;
+}
+
+.empty-state {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-size: 11px;
+}
+

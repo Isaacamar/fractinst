@@ -1,0 +1,90 @@
+/* Module System Container */
+.module-menu-button-container {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+}
+
+/* Controls Area - 5 Column Grid */
+.controls-area {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    align-items: flex-start;
+    padding: 10px;
+}
+
+.module-grid {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.module-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+/* Module Styling */
+.module {
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    min-height: 150px;
+    width: 100%;
+}
+
+.module-header {
+    background: #000;
+    border-bottom: 2px solid #fff;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: grab;
+    user-select: none;
+}
+
+.module-header:active {
+    cursor: grabbing;
+}
+
+.module-title {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #fff;
+    flex: 1;
+}
+
+.module-content {
+    flex: 1;
+    padding: 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* Scrollbar styling */
+.controls-area::-webkit-scrollbar {
+    width: 8px;
+}
+
+.controls-area::-webkit-scrollbar-track {
+    background: #000;
+}
+
+.controls-area::-webkit-scrollbar-thumb {
+    background: #fff;
+    border-radius: 4px;
+}
+
+.controls-area::-webkit-scrollbar-thumb:hover {
+    background: #ccc;
+}
+

@@ -1,6 +1,7 @@
 /**
  * Piano Roll Editor - Visual sequencer for recording and editing notes
  * Refactored to use Transport system with seconds-based timing
+ * Supports real-time recording, quantization, and note editing
  */
 
 class PianoRoll {
@@ -21,6 +22,10 @@ class PianoRoll {
         this.pixelsPerSecond = 50; // Will be recalculated based on BPM
         this.keyHeight = 20;
 
+        // Quantization
+        this.quantizeGrid = 64; // 1/64 note quantization
+        this.quantizeEnabled = true;
+
         // State
         this.isDraggingPlayhead = false;
         this.dragStartX = 0;
@@ -28,11 +33,18 @@ class PianoRoll {
         this.gridContainer = null;
         this.gridElement = null;
         
+        // Note editing state
+        this.draggedNote = null;
+        this.dragStartPos = null;
+        this.isDraggingNote = false;
+        
         // Cached note elements
         this.noteElements = new Map(); // clipId -> Set of note elements
+        this.noteDataMap = new Map(); // noteElement -> note data
 
         this.initializePianoRoll();
         this.setupPlaybackLineSync();
+        this.setupRealTimeRecording();
         this.updatePixelsPerSecond();
     }
 
@@ -54,6 +66,29 @@ class PianoRoll {
         this.renderTimeRuler();
         this.renderGrid();
         this.setupPlaybackLineDragging();
+    }
+
+    /**
+     * Setup real-time recording updates
+     */
+    setupRealTimeRecording() {
+        // Update piano roll in real-time during recording
+        let lastUpdateTime = 0;
+        const updateInterval = 50; // Update every 50ms
+
+        const updateRecording = () => {
+            if (this.midiRecorder && this.midiRecorder.isRecording && this.midiRecorder.currentClip) {
+                const now = performance.now();
+                if (now - lastUpdateTime > updateInterval) {
+                    // Render current clip in real-time
+                    const clips = [this.midiRecorder.currentClip];
+                    this.displayClips(clips);
+                    lastUpdateTime = now;
+                }
+            }
+            requestAnimationFrame(updateRecording);
+        };
+        updateRecording();
     }
 
     /**
@@ -173,15 +208,29 @@ class PianoRoll {
                 barContainer.style.borderRight = '2px solid #fff';
                 barContainer.style.position = 'relative';
 
-                // Create beat cells
+                // Create beat cells with 1/64 quantization grid
                 for (let beat = 0; beat < this.beatsPerBar; beat++) {
                     const cell = document.createElement('div');
                     cell.className = 'piano-roll-beat';
                     cell.style.flex = '1';
                     cell.style.borderRight = '1px solid #333';
+                    cell.style.position = 'relative';
                     cell.dataset.bar = bar;
                     cell.dataset.beat = beat;
                     cell.dataset.midiNote = midiNote;
+
+                    // Add 1/64 grid lines (16 subdivisions per beat)
+                    for (let i = 1; i < 16; i++) {
+                        const gridLine = document.createElement('div');
+                        gridLine.style.position = 'absolute';
+                        gridLine.style.left = `${(i / 16) * 100}%`;
+                        gridLine.style.top = '0';
+                        gridLine.style.width = '1px';
+                        gridLine.style.height = '100%';
+                        gridLine.style.background = 'rgba(255, 255, 255, 0.05)';
+                        gridLine.style.pointerEvents = 'none';
+                        cell.appendChild(gridLine);
+                    }
 
                     barContainer.appendChild(cell);
                 }
@@ -191,6 +240,17 @@ class PianoRoll {
 
             grid.appendChild(row);
         }
+    }
+
+    /**
+     * Quantize time to grid (1/64 notes)
+     */
+    quantizeTime(timeSeconds) {
+        if (!this.quantizeEnabled) return timeSeconds;
+        
+        const beats = this.transport.secondsToBeats(timeSeconds);
+        const quantizedBeats = Math.round(beats * this.quantizeGrid) / this.quantizeGrid;
+        return this.transport.beatsToSeconds(quantizedBeats);
     }
 
     /**
@@ -250,8 +310,14 @@ class PianoRoll {
                 duration = noteOff.time - noteOn.time;
             }
 
+            // Quantize start time if enabled
+            let startTime = noteOn.time;
+            if (this.quantizeEnabled) {
+                startTime = this.quantizeTime(clip.startTime + startTime) - clip.startTime;
+            }
+
             // Calculate position on timeline
-            const absoluteStartTime = clip.startTime + noteOn.time;
+            const absoluteStartTime = clip.startTime + startTime;
             const absoluteEndTime = absoluteStartTime + duration;
 
             // Convert to pixels
@@ -262,24 +328,150 @@ class PianoRoll {
             const row = grid.querySelector(`[data-midi-note="${noteOn.note}"]`);
             if (!row) continue;
 
-            // Create note element
-            const noteEl = document.createElement('div');
+            // Check if note element already exists (for real-time updates)
+            let noteEl = Array.from(this.noteDataMap.keys()).find(el => 
+                el.dataset.noteKey === noteKey && 
+                el.dataset.clipId === clip.id
+            );
+
+            if (!noteEl) {
+                // Create note element
+                noteEl = document.createElement('div');
             noteEl.className = 'midi-note';
             noteEl.style.position = 'absolute';
+                noteEl.style.cursor = 'move';
+                noteEl.dataset.clipId = clip.id;
+                noteEl.dataset.noteKey = noteKey;
+                noteEl.dataset.midiNote = noteOn.note;
+                
+                // Store note data
+                this.noteDataMap.set(noteEl, {
+                    clip: clip,
+                    noteOn: noteOn,
+                    noteOff: noteOff,
+                    noteKey: noteKey
+                });
+
+                // Setup note dragging
+                this.setupNoteDragging(noteEl);
+                
+                row.appendChild(noteEl);
+            }
+
+            // Update note position and size
             noteEl.style.left = startPixels + 'px';
             noteEl.style.top = '0';
             noteEl.style.width = Math.max(4, durationPixels) + 'px';
             noteEl.style.height = this.keyHeight + 'px';
             noteEl.title = `${this.midiToNoteName(noteOn.note)} (${duration.toFixed(2)}s)`;
-            noteEl.dataset.clipId = clip.id;
-            noteEl.dataset.noteKey = noteKey;
 
-            row.appendChild(noteEl);
             clipNoteElements.add(noteEl);
         }
 
         // Store note elements for this clip
         this.noteElements.set(clip.id, clipNoteElements);
+    }
+
+    /**
+     * Setup note dragging for editing
+     */
+    setupNoteDragging(noteEl) {
+        let startX = 0;
+        let startLeft = 0;
+        let startNote = 0;
+
+        noteEl.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            this.isDraggingNote = true;
+            this.draggedNote = noteEl;
+            startX = e.clientX;
+            startLeft = parseFloat(noteEl.style.left) || 0;
+            
+            const noteData = this.noteDataMap.get(noteEl);
+            if (noteData) {
+                startNote = noteData.noteOn.note;
+            }
+
+            noteEl.style.opacity = '0.7';
+            noteEl.classList.add('dragging');
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!this.isDraggingNote || !this.draggedNote) return;
+
+            const deltaX = e.clientX - startX;
+            const deltaPixels = deltaX;
+            const deltaSeconds = deltaPixels / this.pixelsPerSecond;
+            
+            const noteData = this.noteDataMap.get(this.draggedNote);
+            if (!noteData) return;
+
+            // Calculate new start time
+            const originalStartTime = noteData.clip.startTime + noteData.noteOn.time;
+            let newStartTime = originalStartTime + deltaSeconds;
+            
+            // Quantize if enabled
+            if (this.quantizeEnabled) {
+                newStartTime = this.quantizeTime(newStartTime);
+            }
+
+            // Update visual position
+            const relativeTime = newStartTime - noteData.clip.startTime;
+            const newPixels = relativeTime * this.pixelsPerSecond;
+            this.draggedNote.style.left = newPixels + 'px';
+
+            // Check if dragging vertically (change note)
+            const gridRect = this.gridContainer.getBoundingClientRect();
+            const mouseY = e.clientY - gridRect.top;
+            const rowIndex = Math.floor(mouseY / this.keyHeight);
+            const newMidiNote = this.lowestNote + (this.noteRange - 1 - rowIndex);
+            
+            if (newMidiNote >= this.lowestNote && newMidiNote <= this.highestNote && newMidiNote !== startNote) {
+                // Update note visually
+                const newRow = this.gridElement.querySelector(`[data-midi-note="${newMidiNote}"]`);
+                if (newRow && this.draggedNote.parentElement !== newRow) {
+                    this.draggedNote.remove();
+                    newRow.appendChild(this.draggedNote);
+                    noteData.noteOn.note = newMidiNote;
+                    noteData.noteOff.note = newMidiNote;
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!this.isDraggingNote || !this.draggedNote) return;
+
+            const noteData = this.noteDataMap.get(this.draggedNote);
+            if (noteData) {
+                // Update note data with new position
+                const newLeft = parseFloat(this.draggedNote.style.left) || 0;
+                const newStartTime = noteData.clip.startTime + (newLeft / this.pixelsPerSecond);
+                
+                // Quantize if enabled
+                let finalStartTime = newStartTime;
+                if (this.quantizeEnabled) {
+                    finalStartTime = this.quantizeTime(newStartTime);
+                    // Update visual position to snapped position
+                    const snappedRelativeTime = finalStartTime - noteData.clip.startTime;
+                    const snappedPixels = snappedRelativeTime * this.pixelsPerSecond;
+                    this.draggedNote.style.left = snappedPixels + 'px';
+                }
+                
+                const relativeTime = finalStartTime - noteData.clip.startTime;
+                noteData.noteOn.time = Math.max(0, relativeTime);
+
+                // Update note-off time to maintain duration
+                if (noteData.noteOff) {
+                    const duration = noteData.noteOff.time - noteData.noteOn.time;
+                    noteData.noteOff.time = noteData.noteOn.time + Math.max(0.01, duration);
+                }
+            }
+
+            this.draggedNote.style.opacity = '0.9';
+            this.draggedNote.classList.remove('dragging');
+            this.isDraggingNote = false;
+            this.draggedNote = null;
+        });
     }
 
     /**
@@ -292,13 +484,14 @@ class PianoRoll {
         const oldNotes = grid.querySelectorAll('.midi-note');
         oldNotes.forEach(el => el.remove());
         this.noteElements.clear();
+        this.noteDataMap.clear();
     }
 
     /**
      * Update playback line position based on transport time
      */
     updatePlaybackLine(timeSeconds) {
-        if (!this.playbackLine || this.isDraggingPlayhead) return;
+        if (!this.playbackLine || this.isDraggingPlayhead || this.isDraggingNote) return;
 
         // Calculate position as percentage of total timeline
         const totalSeconds = this.transport.beatsToSeconds(this.numBars * this.beatsPerBar);
@@ -320,14 +513,17 @@ class PianoRoll {
 
         // Mouse down on playback line or grid
         const handleMouseDown = (e) => {
+            // Don't start scrubbing if clicking on a note
+            if (e.target.classList.contains('midi-note')) return;
+            
             // Check if clicking on playback line or grid area
             if (e.target === this.playbackLine || 
                 e.target.classList.contains('piano-roll-grid') ||
                 e.target.classList.contains('piano-roll-beat')) {
-                this.isDraggingPlayhead = true;
+            this.isDraggingPlayhead = true;
                 this.dragStartX = e.clientX;
-                this.playbackLine.classList.add('dragging');
-                e.preventDefault();
+            this.playbackLine.classList.add('dragging');
+            e.preventDefault();
                 e.stopPropagation();
             }
         };

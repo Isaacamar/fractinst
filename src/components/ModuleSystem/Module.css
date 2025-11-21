@@ -1,0 +1,126 @@
+/* Wave Selector */
+.wave-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.wave-btn,
+.filter-type-btn,
+.lfo-target-btn,
+.lfo-wave-btn {
+  background: #000;
+  border: 1px solid #fff;
+  color: #fff;
+  padding: 8px 4px;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.1s;
+  font-family: 'Courier New', monospace;
+}
+
+.wave-btn:hover,
+.filter-type-btn:hover,
+.lfo-target-btn:hover,
+.lfo-wave-btn:hover {
+  background: #333;
+}
+
+.wave-btn.active,
+.filter-type-btn.active,
+.lfo-target-btn.active,
+.lfo-wave-btn.active {
+  background: #fff;
+  color: #000;
+}
+
+.filter-type-selector,
+.lfo-target-selector,
+.lfo-wave-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.lfo-wave-selector {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.toggle-btn {
+  width: 100%;
+  background: #000;
+  border: 1px solid #fff;
+  color: #fff;
+  padding: 10px 8px;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.1s;
+  font-family: 'Courier New', monospace;
+  margin-bottom: 10px;
+}
+
+.toggle-btn:hover {
+  background: #333;
+}
+
+.toggle-btn.active {
+  background: #0f0;
+  color: #000;
+  border-color: #0f0;
+}
+
+.filter-bypass-toggle,
+.effect-bypass-toggle {
+  margin-bottom: 10px;
+}
+
+.filter-bypass-btn,
+.effect-bypass-btn {
+  width: 100%;
+  background: #000;
+  border: 1px solid #fff;
+  color: #fff;
+  padding: 10px 8px;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.1s;
+  font-family: 'Courier New', monospace;
+}
+
+.filter-bypass-btn:hover,
+.effect-bypass-btn:hover {
+  background: #333;
+}
+
+.filter-bypass-btn.active,
+.effect-bypass-btn.active {
+  background: #f00;
+  color: #fff;
+  border-color: #f00;
+}
+
+/* Knobs */
+.knobs-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.knob-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+

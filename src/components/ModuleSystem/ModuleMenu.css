@@ -1,0 +1,261 @@
+/* Module Menu Button */
+.module-menu-btn {
+    padding: 8px 14px;
+    background: #000;
+    border: 2px solid #fff;
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+    margin-left: 10px;
+}
+
+.module-menu-btn:hover {
+    background: #00f;
+    color: #fff;
+    border-color: #00f;
+    transform: scale(1.05);
+}
+
+/* Module Menu Modal */
+.module-menu-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.module-menu-content {
+    background: #111;
+    border: 3px solid #fff;
+    max-width: 900px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+}
+
+.module-menu-header {
+    background: #000;
+    border-bottom: 2px solid #fff;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.module-menu-header h2 {
+    font-size: 16px;
+    letter-spacing: 3px;
+    color: #00f;
+    margin: 0;
+}
+
+.module-menu-close {
+    background: #000;
+    border: 2px solid #fff;
+    color: #fff;
+    width: 30px;
+    height: 30px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+}
+
+.module-menu-close:hover {
+    background: #f00;
+    border-color: #f00;
+    transform: scale(1.1);
+}
+
+.module-menu-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.module-categories h3,
+.active-modules h3 {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: #0f0;
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #333;
+}
+
+.module-list,
+.active-module-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.module-category {
+    margin-bottom: 20px;
+}
+
+.module-category h4 {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: #999;
+    margin: 0 0 10px 0;
+}
+
+.module-item {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.module-item:hover {
+    border-color: #fff;
+    background: #222;
+}
+
+.module-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    border: 1px solid #fff;
+    flex-shrink: 0;
+}
+
+.module-info {
+    flex: 1;
+}
+
+.module-name {
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.module-desc {
+    font-size: 9px;
+    color: #999;
+    line-height: 1.3;
+}
+
+.module-add-btn {
+    background: #0f0;
+    border: 2px solid #0f0;
+    color: #000;
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.module-add-btn:hover {
+    background: #0ff;
+    border-color: #0ff;
+    transform: scale(1.1);
+}
+
+/* Active Modules List */
+.active-module-item {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.active-module-item .module-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+}
+
+.active-module-item .module-name {
+    font-size: 10px;
+}
+
+.active-module-item .module-id {
+    font-size: 8px;
+    color: #666;
+}
+
+.module-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.module-toggle-btn {
+    background: #333;
+    border: 1px solid #666;
+    color: #666;
+    width: 25px;
+    height: 25px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.module-toggle-btn.active {
+    background: #0f0;
+    border-color: #0f0;
+    color: #000;
+}
+
+.module-toggle-btn:hover {
+    transform: scale(1.1);
+}
+
+.module-remove-btn {
+    background: #600;
+    border: 1px solid #900;
+    color: #fff;
+    width: 25px;
+    height: 25px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.module-remove-btn:hover {
+    background: #f00;
+    border-color: #f00;
+    transform: scale(1.1);
+}
+
+.no-modules {
+    color: #666;
+    font-size: 10px;
+    text-align: center;
+    padding: 20px;
+}
+

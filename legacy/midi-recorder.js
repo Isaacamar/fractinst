@@ -92,7 +92,10 @@ class MidiRecorder {
         if (!this.isRecording || !this.currentClip) return;
         
         const now = this.transport.getCurrentTime();
-        const relativeTime = now - this.recordingStartTime;
+        let relativeTime = now - this.recordingStartTime;
+        
+        // Don't record negative times (before recording actually started)
+        if (relativeTime < 0) return;
         
         // Create note-on event
         const event = {

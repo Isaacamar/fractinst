@@ -1,0 +1,26 @@
+.oscilloscope-module {
+  display: flex;
+  flex-direction: column;
+  height: 360px;
+  flex-shrink: 0;
+}
+
+.oscilloscope-container {
+  flex: 1;
+  position: relative;
+  background: #000;
+  border: 2px solid #fff;
+  overflow: hidden;
+  min-height: 0;
+  margin: 10px 10px 30px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.oscilloscope-canvas {
+  width: 100%;
+  flex: 1;
+  display: block;
+  background: #000;
+}
+

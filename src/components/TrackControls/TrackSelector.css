@@ -1,0 +1,45 @@
+.track-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+  padding: 0 10px;
+  border-left: 1px solid #333;
+}
+
+.track-select-dropdown {
+  background: #1a1a1a;
+  color: #fff;
+  border: 1px solid #333;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  min-width: 150px;
+  outline: none;
+}
+
+.track-select-dropdown:focus {
+  border-color: #00ff88;
+}
+
+.add-track-btn {
+  background: #1a1a1a;
+  color: #00ff88;
+  border: 1px solid #333;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.add-track-btn:hover {
+  background: #333;
+  border-color: #00ff88;
+}
+
