@@ -1,0 +1,208 @@
+.step-sequencer-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #0a0a0a;
+  color: #fff;
+  overflow: hidden;
+}
+
+.sequencer-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 20px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+
+.sequencer-control-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sequencer-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #999;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.sequencer-select {
+  background: #2a2a2a;
+  color: #fff;
+  border: 1px solid #444;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.sequencer-select:hover {
+  background: #333;
+  border-color: #555;
+}
+
+.sequencer-select:focus {
+  outline: none;
+  border-color: #666;
+}
+
+.sequencer-btn {
+  background: #2a2a2a;
+  color: #fff;
+  border: 1px solid #444;
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.sequencer-btn:hover {
+  background: #333;
+  border-color: #555;
+}
+
+.sequencer-btn:active {
+  background: #222;
+}
+
+.sequencer-btn.muted {
+  background: #4a2a2a;
+  border-color: #ff4444;
+  color: #ff6666;
+}
+
+.sequencer-btn.muted:hover {
+  background: #5a3a3a;
+  border-color: #ff5555;
+}
+
+.sequencer-grid-wrapper {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.sequencer-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: fit-content;
+}
+
+.sequencer-header-row {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.sequencer-row {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.sequencer-label-cell {
+  width: 60px;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  font-size: 10px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+.sequencer-step-number {
+  width: 40px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: #666;
+  font-weight: bold;
+}
+
+.sequencer-step-number.beat-marker {
+  color: #999;
+  font-weight: bold;
+}
+
+.sequencer-step {
+  width: 40px;
+  height: 40px;
+  background: #1a1a1a;
+  border: 2px solid #333;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+  position: relative;
+}
+
+.sequencer-step:hover {
+  border-color: #555;
+  background: #222;
+}
+
+.sequencer-step.active {
+  background: #4a9eff;
+  border-color: #6bb0ff;
+  box-shadow: 0 0 8px rgba(74, 158, 255, 0.3);
+}
+
+.sequencer-step.active:hover {
+  background: #5ba9ff;
+  border-color: #7bbfff;
+}
+
+.sequencer-step.current {
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+  border-color: #fff;
+  z-index: 1;
+}
+
+.sequencer-step.active.current {
+  background: #6bb0ff;
+  border-color: #fff;
+  box-shadow: 0 0 16px rgba(74, 158, 255, 0.6), 0 0 12px rgba(255, 255, 255, 0.3);
+}
+
+.drum-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #999;
+}
+
+/* Scrollbar styling */
+.sequencer-grid-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sequencer-grid-wrapper::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.sequencer-grid-wrapper::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.sequencer-grid-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+

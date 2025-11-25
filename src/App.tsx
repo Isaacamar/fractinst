@@ -5,35 +5,43 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AudioEngine } from './engines/AudioEngine';
 import { DAWCore } from './engines/DAWCore';
+import { DrumMachine } from './engines/DrumMachine';
 import { TransportBar } from './components/TransportBar/TransportBar';
 import { Oscilloscope } from './components/Oscilloscope/Oscilloscope';
 import { ModuleSystem, ModuleSystemRef } from './components/ModuleSystem/ModuleSystem';
 import { InstrumentLibrary } from './components/InstrumentLibrary/InstrumentLibrary';
 import { PianoRoll } from './components/PianoRoll/PianoRoll';
+import { StepSequencer } from './components/StepSequencer/StepSequencer';
 import { BindingsModal } from './components/BindingsModal/BindingsModal';
 import { TrackSelector } from './components/TrackControls/TrackSelector';
 import { useKeyboardController } from './hooks/useKeyboardController';
+import { SequencerScheduler } from './engines/SequencerScheduler';
 import { useTransportStore } from './stores/transportStore';
 import { useMidiStore } from './stores/midiStore';
 import { useAudioStore } from './stores/audioStore';
 import { useTrackStore } from './stores/trackStore';
+import { useSequencerStore } from './stores/sequencerStore';
 import type { InstrumentConfiguration } from './types/instrument';
 import './App.css';
 
 function App() {
   const audioEngineRef = useRef<AudioEngine | null>(null);
   const dawCoreRef = useRef<DAWCore | null>(null);
+  const drumMachineRef = useRef<DrumMachine | null>(null);
+  const sequencerSchedulerRef = useRef<SequencerScheduler | null>(null);
   const moduleSystemRef = useRef<ModuleSystemRef | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isMetronomeEnabled, setIsMetronomeEnabled] = useState(false);
   const [isBindingsOpen, setIsBindingsOpen] = useState(false);
   const [octaveOffset, setOctaveOffset] = useState(4);
-  const [currentView, setCurrentView] = useState<'instrument' | 'piano-roll'>('instrument');
+  const [currentView, setCurrentView] = useState<'instrument' | 'piano-roll' | 'sequencer'>('instrument');
+  const [isPercussionMode, setIsPercussionMode] = useState(false);
 
   const transportStore = useTransportStore();
   const midiStore = useMidiStore();
   const audioStore = useAudioStore();
   const trackStore = useTrackStore();
+  const sequencerStore = useSequencerStore();
 
   // Initial setup: create default track if none exists (only run once)
   const hasInitializedRef = useRef(false);
@@ -53,7 +61,7 @@ function App() {
         distortionBypassed: true,
         modules: []
       };
-      
+
       trackStore.addTrack({
         id: `track_${Date.now()}`,
         name: 'Track 1',
@@ -71,7 +79,7 @@ function App() {
   // Load instrument when active track changes
   useEffect(() => {
     if (!trackStore.activeTrackId) return;
-    
+
     const activeTrack = trackStore.tracks.find(t => t.id === trackStore.activeTrackId);
     if (activeTrack && activeTrack.instrumentConfig) {
       handleLoadInstrument(activeTrack.instrumentConfig);
@@ -94,6 +102,21 @@ function App() {
         dawCore.setAudioContext(context);
         dawCore.setSynthEngine(audioEngine);
         dawCore.ensureInitialized();
+
+        // Initialize Drum Machine
+        const masterGain = audioEngine.getMasterGain();
+        if (masterGain) {
+          const drumMachine = new DrumMachine();
+          await drumMachine.init(context, masterGain);
+          drumMachineRef.current = drumMachine;
+          
+          // Initialize Sequencer Scheduler
+          const transport = dawCore.getTransport();
+          if (transport) {
+            const sequencerScheduler = new SequencerScheduler(transport, drumMachine);
+            sequencerSchedulerRef.current = sequencerScheduler;
+          }
+        }
 
         // Setup transport callbacks
         const transport = dawCore.getTransport();
@@ -122,19 +145,23 @@ function App() {
         dawCore.on('recordingStop', (data) => {
           midiStore.setIsRecording(false);
           // When recording stops, add the clip to the active track
-          if (data?.clips && data.clips.length > 0) {
-            // Get the last recorded clip (assuming single take)
-            const newClip = data.clips[data.clips.length - 1];
+          const newClip = data?.clip;
+          if (newClip) {
             const activeTrackId = useTrackStore.getState().activeTrackId;
-            if (activeTrackId && newClip) {
+            if (activeTrackId) {
               useTrackStore.getState().addClipToTrack(activeTrackId, newClip);
             }
-            midiStore.setClips(data.clips);
           }
         });
 
         // Sync audio store with audio engine
         syncAudioStoreToEngine(audioEngine, audioStore);
+
+        // Sync lead-in settings
+        dawCore.setLeadInBeatCount(transportStore.leadInBeatCount);
+        if (dawCore.getLeadInEnabled() !== transportStore.leadInEnabled) {
+          dawCore.toggleLeadIn();
+        }
 
         audioEngineRef.current = audioEngine;
         dawCoreRef.current = dawCore;
@@ -270,8 +297,22 @@ function App() {
     audioEngineRef.current,
     dawCoreRef.current,
     octaveOffset,
-    setOctaveOffset
+    setOctaveOffset,
+    drumMachineRef.current,
+    isPercussionMode
   );
+
+  // Sync sequencer patterns to scheduler
+  useEffect(() => {
+    if (sequencerSchedulerRef.current) {
+      sequencerSchedulerRef.current.setPatterns(
+        sequencerStore.patterns,
+        sequencerStore.stepCount,
+        sequencerStore.stepResolution,
+        sequencerStore.muted
+      );
+    }
+  }, [sequencerStore.patterns, sequencerStore.stepCount, sequencerStore.stepResolution, sequencerStore.muted]);
 
   // Helper function to sync audio store to engine
   const syncAudioStoreToEngine = (engine: AudioEngine, store: typeof audioStore) => {
@@ -299,6 +340,11 @@ function App() {
     if (!dawCoreRef.current || !isInitialized) return;
     await dawCoreRef.current.play();
     transportStore.setIsPlaying(true);
+    
+    // Start sequencer scheduler if it exists
+    if (sequencerSchedulerRef.current) {
+      sequencerSchedulerRef.current.start();
+    }
   };
 
   const handleStop = useCallback(() => {
@@ -307,6 +353,12 @@ function App() {
     transportStore.setIsPlaying(false);
     if (audioEngineRef.current) {
       audioEngineRef.current.stopAllNotes();
+    }
+    
+    // Stop sequencer scheduler
+    if (sequencerSchedulerRef.current) {
+      sequencerSchedulerRef.current.stop();
+      sequencerSchedulerRef.current.reset();
     }
   }, [dawCoreRef]);
 
@@ -328,7 +380,7 @@ function App() {
 
   const handlePauseStop = useCallback(() => {
     if (!dawCoreRef.current) return;
-    
+
     if (midiStore.isRecording) {
       // Stop recording first
       dawCoreRef.current.stopRecording();
@@ -362,6 +414,12 @@ function App() {
     setIsMetronomeEnabled(enabled);
   };
 
+  const handleLeadInToggle = () => {
+    if (!dawCoreRef.current) return;
+    const enabled = dawCoreRef.current.toggleLeadIn();
+    transportStore.setLeadInEnabled(enabled);
+  };
+
   const handleBpmChange = (bpm: number) => {
     if (!dawCoreRef.current) return;
     dawCoreRef.current.setBPM(bpm);
@@ -376,6 +434,22 @@ function App() {
       transport.setLoopLengthBars(transportStore.loopLengthBars);
     }
   }, [transportStore.loopLengthBars]);
+
+  // Sync lead-in settings from store to engine
+  useEffect(() => {
+    if (!dawCoreRef.current) return;
+    dawCoreRef.current.setLeadInBeatCount(transportStore.leadInBeatCount);
+    // Lead-in enabled state is synced via toggle method
+  }, [transportStore.leadInBeatCount]);
+
+  // Sync lead-in enabled state
+  useEffect(() => {
+    if (!dawCoreRef.current) return;
+    const currentEnabled = dawCoreRef.current.getLeadInEnabled();
+    if (currentEnabled !== transportStore.leadInEnabled) {
+      dawCoreRef.current.toggleLeadIn(); // Toggle to match store state
+    }
+  }, [transportStore.leadInEnabled]);
 
   const handleLoopLengthChange = (bars: number) => {
     if (!dawCoreRef.current) return;
@@ -441,7 +515,7 @@ function App() {
     if (!moduleSystemRef.current) return null;
 
     const modules = moduleSystemRef.current.exportState();
-    
+
     return {
       id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name,
@@ -462,12 +536,13 @@ function App() {
         onStop={handlePauseStop}
         onRecord={handleRecord}
         onMetronomeToggle={handleMetronomeToggle}
+        onLeadInToggle={handleLeadInToggle}
         onBpmChange={handleBpmChange}
         onLoopLengthChange={handleLoopLengthChange}
         isRecording={midiStore.isRecording}
         isMetronomeEnabled={isMetronomeEnabled}
       />
-      
+
       {/* View Toggle and Octave Controls */}
       <div className="transport-bar-secondary">
         <div className="view-toggle">
@@ -485,15 +560,31 @@ function App() {
           >
             ROLL
           </button>
+          <button
+            className={`view-btn ${currentView === 'sequencer' ? 'view-btn-active' : ''}`}
+            onClick={() => setCurrentView('sequencer')}
+            title="Step Sequencer"
+          >
+            SEQ
+          </button>
         </div>
-        
-        <button 
+
+        <button
           className={`view-btn ${isBindingsOpen ? 'view-btn-active' : ''}`}
           onClick={() => setIsBindingsOpen(true)}
           title="Keyboard Bindings & Help"
           style={{ marginLeft: '10px', marginRight: '10px' }}
         >
           BINDINGS
+        </button>
+
+        <button
+          className={`view-btn ${isPercussionMode ? 'view-btn-active' : ''}`}
+          onClick={() => setIsPercussionMode(!isPercussionMode)}
+          title="Toggle Percussion Mode"
+          style={{ marginLeft: '10px', marginRight: '10px', backgroundColor: isPercussionMode ? '#ff9800' : '' }}
+        >
+          DRUMS
         </button>
 
         <TrackSelector />
@@ -503,11 +594,30 @@ function App() {
           <div className="octave-value">{getOctaveDisplay()}</div>
           <button className="octave-btn" onClick={handleOctaveUp}>+OCT</button>
         </div>
+
+        {isPercussionMode && (
+          <div className="kit-controls" style={{ marginLeft: '10px' }}>
+            <select
+              className="kit-select"
+              onChange={(e) => drumMachineRef.current?.setKit(e.target.value as any)}
+              style={{
+                background: '#333',
+                color: '#fff',
+                border: '1px solid #555',
+                padding: '4px 8px',
+                borderRadius: '4px'
+              }}
+            >
+              <option value="tr909">TR-909</option>
+              <option value="bvker">BVKER 909</option>
+            </select>
+          </div>
+        )}
       </div>
 
-      <BindingsModal 
-        isOpen={isBindingsOpen} 
-        onClose={() => setIsBindingsOpen(false)} 
+      <BindingsModal
+        isOpen={isBindingsOpen}
+        onClose={() => setIsBindingsOpen(false)}
         currentOctave={octaveOffset}
       />
 
@@ -515,26 +625,31 @@ function App() {
         <div className="daw-layout">
           <div className="left-sidebar">
             <Oscilloscope audioEngine={audioEngineRef.current} />
-            <InstrumentLibrary 
+            <InstrumentLibrary
               onLoadInstrument={handleLoadInstrument}
               onExportInstrument={handleExportInstrument}
             />
           </div>
           <div className="controls-area-wrapper">
-            <ModuleSystem 
+            <ModuleSystem
               ref={moduleSystemRef}
               audioContext={audioEngineRef.current?.getContext() || null}
               audioEngine={audioEngineRef.current}
             />
           </div>
         </div>
-      ) : (
+      ) : currentView === 'piano-roll' ? (
         <PianoRoll
           transport={dawCoreRef.current?.getTransport() || null}
           synthEngine={audioEngineRef.current}
           midiRecorder={dawCoreRef.current?.getMidiRecorder() || null}
           dawCore={dawCoreRef.current}
           onSwitchToInstrument={() => setCurrentView('instrument')}
+        />
+      ) : (
+        <StepSequencer
+          transport={dawCoreRef.current?.getTransport() || null}
+          drumMachine={drumMachineRef.current}
         />
       )}
     </div>
