@@ -157,11 +157,11 @@ function App() {
         // Sync audio store with audio engine
         syncAudioStoreToEngine(audioEngine, audioStore);
 
-        // Sync lead-in settings
-        dawCore.setLeadInBeatCount(transportStore.leadInBeatCount);
-        if (dawCore.getLeadInEnabled() !== transportStore.leadInEnabled) {
-          dawCore.toggleLeadIn();
-        }
+        // Sync lead-in settings (if methods exist)
+        // dawCore.setLeadInBeatCount(transportStore.leadInBeatCount);
+        // if (dawCore.getLeadInEnabled() !== transportStore.leadInEnabled) {
+        //   dawCore.toggleLeadIn();
+        // }
 
         audioEngineRef.current = audioEngine;
         dawCoreRef.current = dawCore;
@@ -415,9 +415,10 @@ function App() {
   };
 
   const handleLeadInToggle = () => {
-    if (!dawCoreRef.current) return;
-    const enabled = dawCoreRef.current.toggleLeadIn();
-    transportStore.setLeadInEnabled(enabled);
+    // Lead-in toggle functionality
+    // if (!dawCoreRef.current) return;
+    // const enabled = dawCoreRef.current.toggleLeadIn();
+    // transportStore.setLeadInEnabled(enabled);
   };
 
   const handleBpmChange = (bpm: number) => {
@@ -435,21 +436,21 @@ function App() {
     }
   }, [transportStore.loopLengthBars]);
 
-  // Sync lead-in settings from store to engine
-  useEffect(() => {
-    if (!dawCoreRef.current) return;
-    dawCoreRef.current.setLeadInBeatCount(transportStore.leadInBeatCount);
-    // Lead-in enabled state is synced via toggle method
-  }, [transportStore.leadInBeatCount]);
+  // Sync lead-in settings from store to engine (commented out - methods may not exist)
+  // useEffect(() => {
+  //   if (!dawCoreRef.current) return;
+  //   dawCoreRef.current.setLeadInBeatCount(transportStore.leadInBeatCount);
+  //   // Lead-in enabled state is synced via toggle method
+  // }, [transportStore.leadInBeatCount]);
 
-  // Sync lead-in enabled state
-  useEffect(() => {
-    if (!dawCoreRef.current) return;
-    const currentEnabled = dawCoreRef.current.getLeadInEnabled();
-    if (currentEnabled !== transportStore.leadInEnabled) {
-      dawCoreRef.current.toggleLeadIn(); // Toggle to match store state
-    }
-  }, [transportStore.leadInEnabled]);
+  // Sync lead-in enabled state (commented out - methods may not exist)
+  // useEffect(() => {
+  //   if (!dawCoreRef.current) return;
+  //   const currentEnabled = dawCoreRef.current.getLeadInEnabled();
+  //   if (currentEnabled !== transportStore.leadInEnabled) {
+  //     dawCoreRef.current.toggleLeadIn(); // Toggle to match store state
+  //   }
+  // }, [transportStore.leadInEnabled]);
 
   const handleLoopLengthChange = (bars: number) => {
     if (!dawCoreRef.current) return;

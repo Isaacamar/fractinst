@@ -33,3 +33,4 @@ export const COMMON_CHORDS: ChordDefinition[] = [
   { name: 'Min9', intervals: [0, 3, 7, 10, 14] },
 ];
 
+

@@ -7,6 +7,8 @@ import { AudioEngine } from '../engines/AudioEngine';
 import type { DAWCore } from '../engines/DAWCore';
 import { useKeyboardStore } from '../stores/keyboardStore';
 
+import { DrumMachine, DrumSound } from '../engines/DrumMachine';
+
 interface KeyMapping {
   offset: number;
   note: string;
@@ -16,7 +18,9 @@ export const useKeyboardController = (
   synthEngine: AudioEngine | null,
   dawCore: DAWCore | null,
   octaveOffset: number,
-  onOctaveChange?: (octave: number) => void
+  onOctaveChange?: (octave: number) => void,
+  drumMachine: DrumMachine | null = null,
+  isPercussionMode: boolean = false
 ) => {
   const pressedKeysRef = useRef<Set<string>>(new Set());
   const activeChordsRef = useRef<Set<string>>(new Set());
@@ -37,6 +41,22 @@ export const useKeyboardController = (
       'KeyT': { offset: 6, note: 'F#' },
       'KeyY': { offset: 8, note: 'G#' },
       'KeyU': { offset: 10, note: 'A#' }
+    };
+  }, []);
+
+  const getDrumMapping = useCallback((): Record<string, DrumSound> => {
+    return {
+      'KeyA': 'kick',
+      'KeyS': 'snare',
+      'KeyD': 'hihat-closed',
+      'KeyF': 'hihat-open',
+      'KeyG': 'clap',
+      'KeyH': 'tom-low',
+      'KeyJ': 'tom-high',
+      'KeyK': 'ride',
+      'KeyL': 'crash',
+      'KeyZ': 'kick', // Alternative kick
+      'KeyX': 'rim'
     };
   }, []);
 
@@ -73,21 +93,37 @@ export const useKeyboardController = (
       return;
     }
 
+    // PERCUSSION MODE
+    if (isPercussionMode) {
+      console.log('Percussion mode active, key:', keyCode);
+      if (drumMachine) {
+        const drumMap = getDrumMapping();
+        if (drumMap[keyCode]) {
+          event.preventDefault();
+          console.log('Triggering drum:', drumMap[keyCode]);
+          drumMachine.trigger(drumMap[keyCode]);
+          return;
+        }
+      } else {
+        console.warn('DrumMachine instance is null');
+      }
+    }
+
     // Chord keys
     if (chordMap[keyCode]) {
       if (activeChordsRef.current.has(keyCode)) return;
       event.preventDefault();
-      
+
       const chord = chordMap[keyCode];
       const rootMidi = octaveOffset * 12;
-      
+
       chord.intervals.forEach((interval, index) => {
         const midiNote = rootMidi + interval;
         const frequency = AudioEngine.midiToFrequency(midiNote);
         const noteKey = `${keyCode}_${index}`;
-        
+
         synthEngine.playNote(frequency, noteKey);
-        
+
         if (dawCore) {
           dawCore.recordMidiNote({
             frequency,
@@ -97,7 +133,7 @@ export const useKeyboardController = (
           });
         }
       });
-      
+
       activeChordsRef.current.add(keyCode);
       return;
     }
@@ -125,7 +161,7 @@ export const useKeyboardController = (
         velocity: 100
       });
     }
-  }, [synthEngine, dawCore, octaveOffset, onOctaveChange, getQWERTYLayout, chordMap]);
+  }, [synthEngine, dawCore, octaveOffset, onOctaveChange, getQWERTYLayout, chordMap, isPercussionMode, drumMachine, getDrumMapping]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     if (!synthEngine) return;
@@ -136,17 +172,17 @@ export const useKeyboardController = (
     if (chordMap[keyCode]) {
       if (!activeChordsRef.current.has(keyCode)) return;
       event.preventDefault();
-      
+
       const chord = chordMap[keyCode];
       chord.intervals.forEach((_interval, index) => {
         const noteKey = `${keyCode}_${index}`;
         synthEngine.releaseNote(noteKey);
-        
+
         if (dawCore) {
           dawCore.recordMidiNoteRelease(noteKey);
         }
       });
-      
+
       activeChordsRef.current.delete(keyCode);
       return;
     }
@@ -174,7 +210,7 @@ export const useKeyboardController = (
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
-      
+
       // Release all notes on unmount
       pressedKeysRef.current.forEach(keyCode => {
         synthEngine.releaseNote(keyCode);

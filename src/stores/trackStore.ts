@@ -40,7 +40,12 @@ export const useTrackStore = create<TrackStore>((set) => ({
   addClipToTrack: (trackId, clip) => set((state) => ({
     tracks: state.tracks.map(t => {
       if (t.id !== trackId) return t;
-      return { ...t, clips: [...t.clips, clip] };
+      // Deep clone the clip to ensure it's not shared between tracks
+      const clonedClip = {
+        ...clip,
+        events: clip.events.map(ev => ({ ...ev }))
+      };
+      return { ...t, clips: [...t.clips, clonedClip] };
     })
   })),
 

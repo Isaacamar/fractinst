@@ -52,7 +52,7 @@ export const StepSequencer: React.FC<StepSequencerProps> = ({
     toggleMute
   } = useSequencerStore();
 
-  const { isPlaying, bpm, loopLengthBars } = useTransportStore();
+  const { isPlaying } = useTransportStore();
   const animationFrameRef = useRef<number | null>(null);
 
   // Update current step based on transport position
@@ -105,15 +105,6 @@ export const StepSequencer: React.FC<StepSequencerProps> = ({
     }
   };
 
-  const getResolutionLabel = (res: number): string => {
-    switch (res) {
-      case 1: return '1/4';
-      case 2: return '1/8';
-      case 4: return '1/16';
-      case 8: return '1/32';
-      default: return '1/16';
-    }
-  };
 
   // Generate step numbers with visual grouping based on resolution
   const renderStepNumbers = () => {

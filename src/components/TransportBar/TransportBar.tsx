@@ -12,6 +12,7 @@ interface TransportBarProps {
   onStop: () => void;
   onRecord: () => void;
   onMetronomeToggle: () => void;
+  onLeadInToggle: () => void;
   onBpmChange: (bpm: number) => void;
   onLoopLengthChange: (bars: number) => void;
   isRecording: boolean;
@@ -23,12 +24,13 @@ export const TransportBar: React.FC<TransportBarProps> = ({
   onStop,
   onRecord,
   onMetronomeToggle,
+  onLeadInToggle,
   onBpmChange,
   onLoopLengthChange,
   isRecording,
   isMetronomeEnabled
 }) => {
-  const { isPlaying, bpm, formattedTime, loopLengthBars, setLoopLengthBars } = useTransportStore();
+  const { isPlaying, bpm, formattedTime, loopLengthBars, setLoopLengthBars, leadInEnabled } = useTransportStore();
 
   const handleBpmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newBpm = parseInt(e.target.value, 10);
@@ -105,6 +107,13 @@ export const TransportBar: React.FC<TransportBarProps> = ({
           title="Metronome"
         >
           ♩
+        </button>
+        <button
+          className={`transport-btn leadin-btn ${leadInEnabled ? 'active' : ''}`}
+          onClick={onLeadInToggle}
+          title="Lead-in Metronome"
+        >
+          ⏱
         </button>
         <div className={`recording-indicator ${isRecording ? 'recording-active' : ''}`}></div>
       </div>

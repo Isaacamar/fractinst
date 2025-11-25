@@ -67,9 +67,9 @@ export class MidiRecorder {
     this.isRecording = true;
     this.recordingStartTime = this.transport.getCurrentTime();
     
-    // Create new clip
+    // Create new clip with unique ID
     this.currentClip = {
-      id: `clip-${Date.now()}`,
+      id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       startTime: this.recordingStartTime,
       length: 0, // Will be updated when recording stops
       events: []
@@ -101,12 +101,10 @@ export class MidiRecorder {
       this.currentClip!.length = Math.max(0.1, now - this.recordingStartTime);
     }
     
-    // Add clip to track if it has events
-    let recordedClip: MidiClip | null = null;
-    if (this.currentClip && this.currentClip.events.length > 0) {
-      this.track.clips.push(this.currentClip);
-      recordedClip = this.currentClip;
-    }
+    // Return the clip (don't add to internal track - tracks manage their own clips)
+    const recordedClip: MidiClip | null = this.currentClip && this.currentClip.events.length > 0 
+      ? { ...this.currentClip } // Return a copy, don't keep reference
+      : null;
     
     this.isRecording = false;
     this.currentClip = null;

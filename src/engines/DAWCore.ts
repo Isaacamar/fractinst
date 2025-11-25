@@ -32,7 +32,9 @@ export class DAWCore {
 
   // Metronome
   private metronomeEnabled: boolean = false;
-  private leadInBeatCount: number = 0;
+  private leadInEnabled: boolean = true; // Default to enabled
+  private leadInBeatCount: number = 4; // Default 4 beats
+  private currentLeadInBeat: number = 0;
   private isLeadIn: boolean = false;
 
   /**
@@ -83,19 +85,26 @@ export class DAWCore {
         });
         lastBeat = currentBeat;
 
-        // Play metronome
+        // Play metronome (only if not in lead-in, or if lead-in is enabled)
         if (this.metronomeEnabled && this.synthEngine) {
-          const beatInBar = currentBeat % 4; // Assuming 4/4 time
-          const frequency = beatInBar === 0 ? 1000 : 600;
-          this.synthEngine.playMetronomeClick(frequency, 0.1);
+          if (this.isLeadIn && this.leadInEnabled) {
+            // Play lead-in metronome
+            const frequency = this.currentLeadInBeat === 0 ? 1000 : 600;
+            this.synthEngine.playMetronomeClick(frequency, 0.1);
+          } else if (!this.isLeadIn) {
+            // Play regular metronome
+            const beatInBar = currentBeat % 4; // Assuming 4/4 time
+            const frequency = beatInBar === 0 ? 1000 : 600;
+            this.synthEngine.playMetronomeClick(frequency, 0.1);
+          }
         }
 
         // Track lead-in beats
         if (this.isLeadIn) {
-          this.leadInBeatCount++;
-          if (this.leadInBeatCount >= 4) {
+          this.currentLeadInBeat++;
+          if (this.currentLeadInBeat >= this.leadInBeatCount) {
             this.isLeadIn = false;
-            this.leadInBeatCount = 0;
+            this.currentLeadInBeat = 0;
             // Start actual recording
             if (this.midiRecorder) {
               this.midiRecorder.startRecording();
@@ -195,14 +204,21 @@ export class DAWCore {
     await this.transport!.play();
     this.playbackScheduler!.start();
 
-    // Start lead-in
-    this.isLeadIn = true;
-    this.leadInBeatCount = 0;
-    this.emit('recordingStart'); // Emit lead-in start
-
-    // Start recording after lead-in (handled in callback)
-    // The actual recording start will be emitted in setupTransportCallbacks
-    // when leadInBeatCount reaches 4
+    // Start lead-in if enabled, otherwise start recording immediately
+    if (this.leadInEnabled) {
+      this.isLeadIn = true;
+      this.currentLeadInBeat = 0;
+      this.emit('recordingStart'); // Emit lead-in start
+      // The actual recording start will be emitted in setupTransportCallbacks
+      // when currentLeadInBeat reaches leadInBeatCount
+    } else {
+      // No lead-in, start recording immediately
+      if (this.midiRecorder) {
+        this.midiRecorder.startRecording();
+        this.transport!.setIsRecording(true);
+        this.emit('recordingStart');
+      }
+    }
   }
 
   /**
@@ -214,8 +230,10 @@ export class DAWCore {
     const clip = this.midiRecorder.stopRecording();
     this.transport!.setIsRecording(false);
     this.isLeadIn = false;
+    this.currentLeadInBeat = 0;
 
-    this.emit('recordingStop', { clips: this.midiRecorder.getClips() });
+    // Emit the current clip, not all clips
+    this.emit('recordingStop', { clip });
     return clip;
   }
 
@@ -248,6 +266,35 @@ export class DAWCore {
   toggleMetronome(): boolean {
     this.metronomeEnabled = !this.metronomeEnabled;
     return this.metronomeEnabled;
+  }
+
+  /**
+   * Toggle lead-in metronome
+   */
+  toggleLeadIn(): boolean {
+    this.leadInEnabled = !this.leadInEnabled;
+    return this.leadInEnabled;
+  }
+
+  /**
+   * Get lead-in enabled state
+   */
+  getLeadInEnabled(): boolean {
+    return this.leadInEnabled;
+  }
+
+  /**
+   * Set lead-in beat count
+   */
+  setLeadInBeatCount(beats: number): void {
+    this.leadInBeatCount = Math.max(1, Math.min(16, beats));
+  }
+
+  /**
+   * Get lead-in beat count
+   */
+  getLeadInBeatCount(): number {
+    return this.leadInBeatCount;
   }
 
   /**

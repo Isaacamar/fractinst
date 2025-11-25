@@ -170,7 +170,6 @@ export class SequencerScheduler {
       if (beatsUntilStep >= 0 && stepAbsoluteBeat >= scheduleStart && stepAbsoluteBeat < scheduleEnd) {
         // Calculate when to trigger (relative to audioContext.currentTime)
         const now = audioContext.currentTime;
-        const currentTime = this.transport.getCurrentTime();
         const secondsUntilStep = (beatsUntilStep / this.transport.getBpm()) * 60;
         const triggerTime = now + secondsUntilStep;
         
