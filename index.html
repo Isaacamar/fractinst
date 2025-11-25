@@ -5,14 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FractInst - Browser-Based Synth & DAW</title>
     <script>
-        // Redirect to the built version for GitHub Pages
-        window.location.replace('/fractinst/');
+        // Redirect to built version - GitHub Pages serves from root when using branch deployment
+        // This ensures we load the built assets from /fractinst/
+        if (window.location.pathname === '/' || window.location.pathname === '/fractinst' || !window.location.pathname.startsWith('/fractinst/')) {
+            window.location.replace('/fractinst/');
+        }
     </script>
 </head>
 <body>
     <div id="root"></div>
-    <p>Redirecting to application...</p>
-    <script type="module" src="/src/main.tsx"></script>
+    <p>Loading...</p>
 </body>
 </html>
 
