@@ -41,21 +41,9 @@ export class SequencerScheduler {
     this.stepCount = stepCount;
     this.stepResolution = stepResolution;
     this.muted = muted;
-    
+
     // Clear scheduled steps when patterns change
     this.scheduledSteps.clear();
-    
-    console.log('Sequencer patterns updated', {
-      stepCount,
-      stepResolution,
-      muted,
-      patternCount: Object.keys(patterns).length,
-      patterns: Object.entries(patterns).map(([sound, pattern]) => ({
-        sound,
-        length: pattern?.length || 0,
-        activeCount: pattern ? pattern.filter(p => p).length : 0
-      }))
-    });
   }
   
   /**
@@ -76,20 +64,9 @@ export class SequencerScheduler {
     this.scheduleTimerId = setInterval(() => {
       this.scheduleSteps();
     }, this.scheduleInterval);
-    
+
     // Schedule immediately to catch any steps that should play right away
     this.scheduleSteps();
-    
-    console.log('Sequencer scheduler started', {
-      stepCount: this.stepCount,
-      stepResolution: this.stepResolution,
-      lookAheadBeats: this.lookAheadBeats,
-      patternKeys: Object.keys(this.patterns),
-      activeSteps: Object.entries(this.patterns).map(([sound, pattern]) => ({
-        sound,
-        active: pattern ? pattern.filter(p => p).length : 0
-      }))
-    });
   }
   
   /**
@@ -103,8 +80,6 @@ export class SequencerScheduler {
     
     this.scheduledSteps.clear();
     this.lastScheduledBeat = -1;
-    
-    console.log('Sequencer scheduler stopped');
   }
   
   /**
@@ -177,19 +152,9 @@ export class SequencerScheduler {
         if (!this.muted) {
           for (const [sound, pattern] of Object.entries(this.patterns)) {
             if (pattern && pattern[normalizedStep]) {
-              // Use setTimeout for scheduling (acceptable for drum triggers)
-              const delay = Math.max(0, (triggerTime - now) * 1000);
-              
-              if (delay < 10) {
-                // Trigger immediately if delay is very small
-                this.drumMachine.trigger(sound as DrumSound, triggerTime);
-              } else {
-                setTimeout(() => {
-                  if (this.transport.getIsPlaying() && !this.muted) {
-                    this.drumMachine.trigger(sound as DrumSound, audioContext.currentTime);
-                  }
-                }, delay);
-              }
+              // Use Web Audio API native scheduling for precise timing
+              // This schedules directly on the audio thread without setTimeout
+              this.drumMachine.trigger(sound as DrumSound, triggerTime);
             }
           }
         }

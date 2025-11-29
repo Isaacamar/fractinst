@@ -48,7 +48,7 @@ export const TransportBar: React.FC<TransportBarProps> = ({
   };
 
   return (
-    <div className="transport-bar">
+    <div className="transport-bar" id="transport-bar">
       <div className="daw-info">
         <div className="time-display">
           <div className="label">TIME</div>

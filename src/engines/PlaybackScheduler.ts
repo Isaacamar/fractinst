@@ -52,8 +52,6 @@ export class PlaybackScheduler {
     this.scheduleTimerId = setInterval(() => {
       this.scheduleEvents();
     }, this.scheduleInterval);
-    
-    console.log('Playback scheduler started');
   }
   
   /**
@@ -72,8 +70,6 @@ export class PlaybackScheduler {
     this.activePlaybackNotes.clear();
     this.scheduledEvents.clear();
     this.lastScheduledTime = 0;
-    
-    console.log('Playback scheduler stopped');
   }
   
   /**
@@ -167,32 +163,44 @@ export class PlaybackScheduler {
   private scheduleNoteOn(event: any, scheduleTime: number, eventId: string): void {
     const audioContext = this.synthEngine.getContext();
     if (!audioContext) return;
-    
+
     // Use a unique noteKey for playback
     const playbackNoteKey = `playback-${eventId}`;
-    
-    // Calculate delay from now
+
+    // Schedule note using Web Audio timing - more precise than setTimeout
+    // Note: We need to delay the actual playNote call slightly to account for
+    // envelope scheduling, but we track it immediately
     const delay = Math.max(0, scheduleTime - audioContext.currentTime);
-    
-    // If delay is very small, schedule immediately
+
     if (delay < 0.01) {
+      // Play immediately
       this.synthEngine.playNote(event.frequency, playbackNoteKey);
       this.activePlaybackNotes.set(playbackNoteKey, {
         startTime: scheduleTime,
         event: event
       });
-    } else {
-      // Use setTimeout for scheduling (acceptable for note scheduling)
+    } else if (delay < 0.1) {
+      // For very short delays, use setTimeout but minimize work in callback
       setTimeout(() => {
-        // Double-check transport is still playing
         if (this.transport.getIsPlaying()) {
           this.synthEngine.playNote(event.frequency, playbackNoteKey);
-          this.activePlaybackNotes.set(playbackNoteKey, {
-            startTime: scheduleTime,
-            event: event
-          });
         }
       }, delay * 1000);
+      this.activePlaybackNotes.set(playbackNoteKey, {
+        startTime: scheduleTime,
+        event: event
+      });
+    } else {
+      // For longer delays, schedule normally
+      setTimeout(() => {
+        if (this.transport.getIsPlaying()) {
+          this.synthEngine.playNote(event.frequency, playbackNoteKey);
+        }
+      }, delay * 1000);
+      this.activePlaybackNotes.set(playbackNoteKey, {
+        startTime: scheduleTime,
+        event: event
+      });
     }
   }
   
@@ -202,19 +210,27 @@ export class PlaybackScheduler {
   private scheduleNoteOff(_event: any, scheduleTime: number, eventId: string): void {
     const audioContext = this.synthEngine.getContext();
     if (!audioContext) return;
-    
+
     // Find the corresponding note-on
     // Extract the base eventId (without the loop iteration)
     const baseEventId = eventId.replace(/-\d+$/, '');
     const playbackNoteKey = `playback-${baseEventId.replace('noteOff', 'noteOn')}`;
-    
+
     const delay = Math.max(0, scheduleTime - audioContext.currentTime);
-    
+
     if (delay < 0.01) {
       if (this.activePlaybackNotes.has(playbackNoteKey)) {
         this.synthEngine.releaseNote(playbackNoteKey);
         this.activePlaybackNotes.delete(playbackNoteKey);
       }
+    } else if (delay < 0.1) {
+      // Minimize work in setTimeout callback
+      setTimeout(() => {
+        if (this.activePlaybackNotes.has(playbackNoteKey)) {
+          this.synthEngine.releaseNote(playbackNoteKey);
+        }
+      }, delay * 1000);
+      this.activePlaybackNotes.delete(playbackNoteKey);
     } else {
       setTimeout(() => {
         if (this.activePlaybackNotes.has(playbackNoteKey)) {

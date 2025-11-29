@@ -13,6 +13,7 @@ import { InstrumentLibrary } from './components/InstrumentLibrary/InstrumentLibr
 import { PianoRoll } from './components/PianoRoll/PianoRoll';
 import { StepSequencer } from './components/StepSequencer/StepSequencer';
 import { BindingsModal } from './components/BindingsModal/BindingsModal';
+import { Onboarding } from './components/Onboarding/Onboarding';
 import { TrackSelector } from './components/TrackControls/TrackSelector';
 import { useKeyboardController } from './hooks/useKeyboardController';
 import { SequencerScheduler } from './engines/SequencerScheduler';
@@ -109,7 +110,7 @@ function App() {
           const drumMachine = new DrumMachine();
           await drumMachine.init(context, masterGain);
           drumMachineRef.current = drumMachine;
-          
+
           // Initialize Sequencer Scheduler
           const transport = dawCore.getTransport();
           if (transport) {
@@ -340,7 +341,7 @@ function App() {
     if (!dawCoreRef.current || !isInitialized) return;
     await dawCoreRef.current.play();
     transportStore.setIsPlaying(true);
-    
+
     // Start sequencer scheduler if it exists
     if (sequencerSchedulerRef.current) {
       sequencerSchedulerRef.current.start();
@@ -354,7 +355,7 @@ function App() {
     if (audioEngineRef.current) {
       audioEngineRef.current.stopAllNotes();
     }
-    
+
     // Stop sequencer scheduler
     if (sequencerSchedulerRef.current) {
       sequencerSchedulerRef.current.stop();
@@ -545,7 +546,7 @@ function App() {
       />
 
       {/* View Toggle and Octave Controls */}
-      <div className="transport-bar-secondary">
+      <div className="transport-bar-secondary" id="view-toggles">
         <div className="view-toggle">
           <button
             className={`view-btn ${currentView === 'instrument' ? 'view-btn-active' : ''}`}
@@ -573,6 +574,7 @@ function App() {
         <button
           className={`view-btn ${isBindingsOpen ? 'view-btn-active' : ''}`}
           onClick={() => setIsBindingsOpen(true)}
+          id="btn-bindings"
           title="Keyboard Bindings & Help"
           style={{ marginLeft: '10px', marginRight: '10px' }}
         >
@@ -614,7 +616,21 @@ function App() {
             </select>
           </div>
         )}
+
+        <button
+          className="view-btn help-btn"
+          onClick={() => (window as any).startOnboarding?.()}
+          title="Start Tour"
+          style={{ marginLeft: '10px', width: '36px', height: '36px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          ?
+        </button>
       </div>
+
+      <Onboarding
+        setIsBindingsOpen={setIsBindingsOpen}
+        setCurrentView={setCurrentView}
+      />
 
       <BindingsModal
         isOpen={isBindingsOpen}
@@ -622,38 +638,42 @@ function App() {
         currentOctave={octaveOffset}
       />
 
-      {currentView === 'instrument' ? (
-        <div className="daw-layout">
-          <div className="left-sidebar">
-            <Oscilloscope audioEngine={audioEngineRef.current} />
-            <InstrumentLibrary
-              onLoadInstrument={handleLoadInstrument}
-              onExportInstrument={handleExportInstrument}
-            />
+      {
+        currentView === 'instrument' ? (
+          <div className="daw-layout">
+            <div className="left-sidebar">
+              <div id="oscilloscope">
+                <Oscilloscope audioEngine={audioEngineRef.current} />
+              </div>
+              <InstrumentLibrary
+                onLoadInstrument={handleLoadInstrument}
+                onExportInstrument={handleExportInstrument}
+              />
+            </div>
+            <div className="controls-area-wrapper" id="module-system">
+              <ModuleSystem
+                ref={moduleSystemRef}
+                audioContext={audioEngineRef.current?.getContext() || null}
+                audioEngine={audioEngineRef.current}
+              />
+            </div>
           </div>
-          <div className="controls-area-wrapper">
-            <ModuleSystem
-              ref={moduleSystemRef}
-              audioContext={audioEngineRef.current?.getContext() || null}
-              audioEngine={audioEngineRef.current}
-            />
-          </div>
-        </div>
-      ) : currentView === 'piano-roll' ? (
-        <PianoRoll
-          transport={dawCoreRef.current?.getTransport() || null}
-          synthEngine={audioEngineRef.current}
-          midiRecorder={dawCoreRef.current?.getMidiRecorder() || null}
-          dawCore={dawCoreRef.current}
-          onSwitchToInstrument={() => setCurrentView('instrument')}
-        />
-      ) : (
-        <StepSequencer
-          transport={dawCoreRef.current?.getTransport() || null}
-          drumMachine={drumMachineRef.current}
-        />
-      )}
-    </div>
+        ) : currentView === 'piano-roll' ? (
+          <PianoRoll
+            transport={dawCoreRef.current?.getTransport() || null}
+            synthEngine={audioEngineRef.current}
+            midiRecorder={dawCoreRef.current?.getMidiRecorder() || null}
+            dawCore={dawCoreRef.current}
+            onSwitchToInstrument={() => setCurrentView('instrument')}
+          />
+        ) : (
+          <StepSequencer
+            transport={dawCoreRef.current?.getTransport() || null}
+            drumMachine={drumMachineRef.current}
+          />
+        )
+      }
+    </div >
   );
 }
 

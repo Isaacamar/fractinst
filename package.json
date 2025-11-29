@@ -12,18 +12,23 @@
     "type": "git",
     "url": "git+https://github.com/Isaacamar/fractinst.git"
   },
-  "keywords": ["synthesizer", "daw", "web-audio"],
+  "keywords": [
+    "synthesizer",
+    "daw",
+    "web-audio"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@react-three/drei": "^9.92.0",
+    "@react-three/fiber": "^8.15.0",
+    "driver.js": "^1.4.0",
+    "idb": "^8.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "three": "^0.160.0",
-    "@react-three/fiber": "^8.15.0",
-    "@react-three/drei": "^9.92.0",
-    "zustand": "^4.4.7",
-    "idb": "^8.0.0",
-    "zod": "^3.22.0"
+    "zod": "^3.22.0",
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

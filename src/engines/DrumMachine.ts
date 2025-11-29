@@ -108,7 +108,6 @@ export class DrumMachine {
    */
   trigger(sound: DrumSound, time: number = 0, velocity: number = 1): void {
     const key = `${this.activeKit}:${sound}`;
-    console.log(`DrumMachine triggering: ${key}`);
 
     if (!this.context) {
       console.error('DrumMachine: No AudioContext');

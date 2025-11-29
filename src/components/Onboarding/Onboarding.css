@@ -1,0 +1,109 @@
+/* Custom styles for driver.js popover to match app theme */
+.driver-popover {
+  background-color: #1a1a1a;
+  color: #fff;
+  border: 1px solid #00ff88;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.2);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.driver-popover .driver-popover-title {
+  color: #00ff88;
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.driver-popover .driver-popover-description {
+  color: #ccc;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Navigation Buttons */
+.driver-popover .driver-popover-navigation-btns button {
+  flex: 0 0 auto;
+  min-width: 60px;
+  text-align: center;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #555;
+  text-shadow: none;
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1.2;
+}
+
+.driver-popover .driver-popover-navigation-btns button:hover {
+  background-color: #444;
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
+.driver-popover .driver-popover-navigation-btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Close Button */
+.driver-popover .driver-popover-close-btn {
+  color: #666;
+  transition: color 0.2s;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 20px !important;
+  height: 20px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px !important;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  box-shadow: none !important;
+}
+
+.driver-popover .driver-popover-close-btn:hover {
+  color: #fff;
+  background: transparent !important;
+}
+
+.driver-popover .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: #1a1a1a;
+  /* Match background */
+}
+
+.driver-popover .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: #1a1a1a;
+  /* Match background */
+}
+
+.driver-popover .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: #1a1a1a;
+  /* Match background */
+}
+
+.driver-popover .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: #1a1a1a;
+  /* Match background */
+}
+
+/* Add a pseudo-element for the border of the arrow if possible, or just accept the background color match */
+/* Since we have a border on the popover, the arrow might look slightly disconnected without a border. 
+   driver.js doesn't make it easy to border the arrow perfectly. 
+   Let's try to match the border color for the arrow to make it look like part of the border, 
+   or just match the background and accept it breaks the border line.
+   
+   Actually, usually you want the arrow to match the background color of the popover.
+   The previous CSS had it matching the border color (#00ff88), which would make a green triangle.
+   Let's stick to the green triangle if that was the intent, or match the dark background.
+   The user asked for "dark mode". A solid green triangle might be too much.
+   Let's try matching the background color #1a1a1a.
+*/

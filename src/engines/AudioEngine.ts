@@ -38,7 +38,7 @@ export class AudioEngine {
   // Voice management
   private voicePool: Voice[] = [];
   private activeVoices: Map<string | number, Voice> = new Map();
-  private maxVoices: number = 8;
+  private maxVoices: number = 32; // Increased from 8 to handle sequencer + live playing
 
   // Module enable/disable states
   private moduleStates: Map<string, boolean> = new Map();
@@ -116,7 +116,6 @@ export class AudioEngine {
     });
 
     this.sampleRate = this.context.sampleRate;
-    console.log('Audio context initialized:', this.sampleRate, 'Hz');
 
     // Create master gain
     this.masterGain = this.context.createGain();
@@ -155,8 +154,6 @@ export class AudioEngine {
 
     // Setup recording
     this.setupRecording();
-
-    console.log('Low-latency audio engine initialized');
   }
 
   /**
@@ -418,8 +415,6 @@ export class AudioEngine {
       effect.bypassGain.gain.value = 0;
       effect.active = true;
     }
-
-    console.log(`${name} bypass:`, bypassed ? 'ON' : 'OFF');
   }
 
   /**
@@ -481,15 +476,12 @@ export class AudioEngine {
 
     // Check if oscillator module is enabled
     if (!this.getModuleEnabled('oscillator-base')) {
-      console.log('Oscillator module is disabled, not playing note');
       return;
     }
 
     if (this.context.state !== 'running') {
-      console.warn('Audio context not running, state:', this.context.state);
       // Try to resume
       this.context.resume().then(() => {
-        console.log('Audio context resumed');
         this.playNote(frequency, noteKey);
       }).catch(err => {
         console.error('Failed to resume audio context:', err);
@@ -499,11 +491,8 @@ export class AudioEngine {
 
     // Check if note already playing
     if (this.activeVoices.has(noteKey)) {
-      console.log('Note already playing:', noteKey);
       return;
     }
-
-    console.log('Playing note:', frequency, 'Hz, key:', noteKey);
 
     // Get free voice
     const voice = this.getFreeVoice();
