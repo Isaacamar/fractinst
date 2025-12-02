@@ -13,6 +13,8 @@ export class DrumMachine {
   private masterGain: GainNode | null = null;
   private buffers: Map<string, AudioBuffer> = new Map(); // Key: "kit:sound"
   private activeKit: DrumKit = 'tr909';
+  private analyser: AnalyserNode | null = null;
+  private waveformData: Uint8Array | null = null;
 
   // Sample paths
   private samplePaths: Record<DrumKit, Record<DrumSound, string>> = {
@@ -52,6 +54,17 @@ export class DrumMachine {
     this.masterGain = context.createGain();
     this.masterGain.gain.value = 0.8; // Default volume
     this.masterGain.connect(destination);
+
+    // Create analyser for drum waveform visualization
+    this.analyser = context.createAnalyser();
+    this.analyser.fftSize = 2048;
+    this.analyser.smoothingTimeConstant = 0.3;
+    const bufferLength = this.analyser.frequencyBinCount;
+    const buffer = new ArrayBuffer(bufferLength);
+    this.waveformData = new Uint8Array(buffer);
+
+    // Tap the drum signal after masterGain for visualization
+    this.masterGain.connect(this.analyser);
 
     await this.loadSamples();
   }
@@ -150,5 +163,14 @@ export class DrumMachine {
    */
   getContext(): AudioContext | null {
     return this.context;
+  }
+
+  /**
+   * Get drum waveform data for visualization
+   */
+  getWaveformData(): Uint8Array | null {
+    if (!this.analyser || !this.waveformData) return null;
+    this.analyser.getByteTimeDomainData(this.waveformData as any);
+    return this.waveformData;
   }
 }

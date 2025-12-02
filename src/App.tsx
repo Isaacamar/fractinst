@@ -8,6 +8,7 @@ import { DAWCore } from './engines/DAWCore';
 import { DrumMachine } from './engines/DrumMachine';
 import { TransportBar } from './components/TransportBar/TransportBar';
 import { Oscilloscope } from './components/Oscilloscope/Oscilloscope';
+import { DrumOscilloscope } from './components/Oscilloscope/DrumOscilloscope';
 import { ModuleSystem, ModuleSystemRef } from './components/ModuleSystem/ModuleSystem';
 import { InstrumentLibrary } from './components/InstrumentLibrary/InstrumentLibrary';
 import { PianoRoll } from './components/PianoRoll/PianoRoll';
@@ -643,7 +644,11 @@ function App() {
           <div className="daw-layout">
             <div className="left-sidebar">
               <div id="oscilloscope">
-                <Oscilloscope audioEngine={audioEngineRef.current} />
+                {isPercussionMode ? (
+                  <DrumOscilloscope drumMachine={drumMachineRef.current} />
+                ) : (
+                  <Oscilloscope audioEngine={audioEngineRef.current} />
+                )}
               </div>
               <InstrumentLibrary
                 onLoadInstrument={handleLoadInstrument}

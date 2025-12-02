@@ -46,6 +46,31 @@ export const useKeyboardController = (
 
   const getDrumMapping = useCallback((): Record<string, DrumSound> => {
     return {
+      // Number row
+      'Digit1': 'kick',
+      'Digit2': 'snare',
+      'Digit3': 'clap',
+      'Digit4': 'hihat-closed',
+      'Digit5': 'hihat-open',
+      'Digit6': 'tom-low',
+      'Digit7': 'tom-high',
+      'Digit8': 'ride',
+      'Digit9': 'rim',
+      'Digit0': 'crash',
+
+      // QWERTY row
+      'KeyQ': 'kick',
+      'KeyW': 'snare',
+      'KeyE': 'clap',
+      'KeyR': 'hihat-closed',
+      'KeyT': 'hihat-open',
+      'KeyY': 'tom-low',
+      'KeyU': 'tom-high',
+      'KeyI': 'ride',
+      'KeyO': 'rim',
+      'KeyP': 'crash',
+
+      // ASDF row
       'KeyA': 'kick',
       'KeyS': 'snare',
       'KeyD': 'hihat-closed',
@@ -54,9 +79,20 @@ export const useKeyboardController = (
       'KeyH': 'tom-low',
       'KeyJ': 'tom-high',
       'KeyK': 'ride',
-      'KeyL': 'crash',
-      'KeyZ': 'kick', // Alternative kick
-      'KeyX': 'rim'
+      'KeyL': 'rim',
+      'Semicolon': 'crash',
+
+      // ZXCV row
+      'KeyZ': 'kick',
+      'KeyX': 'snare',
+      'KeyC': 'clap',
+      'KeyV': 'hihat-closed',
+      'KeyB': 'hihat-open',
+      'KeyN': 'tom-low',
+      'KeyM': 'tom-high',
+      'Comma': 'ride',
+      'Period': 'rim',
+      'Slash': 'crash'
     };
   }, []);
 
