@@ -1,6 +1,5 @@
 import { Track } from './track';
 import { SequencerState } from '../stores/sequencerStore';
-import { AudioParams } from '../stores/audioStore';
 
 export interface ProjectMetadata {
     id: string;

@@ -1,21 +1,21 @@
-# 🎹 FractInst - Browser-Based Modular Synthesizer & DAW
+# FractInst - Browser-Based Modular Synthesizer & DAW
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://isaacamar.github.io/fractinst/)
 [![Donate](https://img.shields.io/badge/Donate-Buy%20Me%20A%20Coffee-orange.svg)](https://buymeacoffee.com/YOUR_USERNAME)
-[![GitHub Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/YOUR_USERNAME)
+[![GitHub Sponsor](https://img.shields.io/badge/Sponsor-Heart-ff69b4)](https://github.com/sponsors/YOUR_USERNAME)
 
 > A powerful, low-latency browser-based digital audio workstation (DAW) and modular synthesizer. No installation required—create music directly in your browser.
 
-**[🚀 Try Live Demo](https://isaacamar.github.io/fractinst/)** • **[📖 Read the Manual](https://isaacamar.github.io/fractinst/manual)** • **[💬 Join Community](#community)** • **[☕ Support Development](#support-this-project)**
+**[Try Live Demo](https://isaacamar.github.io/fractinst/)** • **[Read the Manual](https://isaacamar.github.io/fractinst/manual)** • **[Join Community](#community)** • **[Support Development](#support-this-project)**
 
-![FractInst Screenshot](docs/images/screenshot.png)
+![FractInst Screenshot](docs/images/DAWSS.png)
 
 ---
 
-## ✨ Features
+## Features
 
-### 🎛️ Modular Synthesis Engine
+### Modular Synthesis Engine
 - **32-voice polyphony** for complex arrangements
 - **Multiple waveforms**: Sine, Square, Sawtooth, Triangle
 - **Complete ADSR envelope** with millisecond precision
@@ -24,7 +24,7 @@
 - **LFO modulation** with multiple waveforms and targets
 - **Voice module** with unison/detune and noise generator
 
-### 🎚️ Professional Effects
+### Professional Effects
 - **Distortion** - Waveshaper-based saturation
 - **Compressor** - Dynamic range control
 - **Chorus** - Stereo width and shimmer
@@ -32,7 +32,7 @@
 - **Reverb** - Convolution-based room ambience
 - All effects feature **true bypass** for zero CPU when disabled
 
-### 🥁 Drum Machine & Sequencer
+### Drum Machine & Sequencer
 - **10 drum sounds per kit** (Kick, Snare, Clap, Hi-Hats, Toms, Cymbals)
 - **Multiple drum kits**: TR-909, BVKER
 - **Grid-based step sequencer** with adjustable steps and resolution
@@ -40,7 +40,7 @@
 - **Pattern freezing** for CPU optimization
 - Keyboard triggering and real-time performance
 
-### 🎼 DAW Capabilities
+### DAW Capabilities
 - **Piano Roll editor** with drag-and-drop MIDI editing
 - **Multi-track system** with unlimited tracks
 - **Arrangement view** with timeline and clips
@@ -49,19 +49,19 @@
 - **Adjustable BPM** (20-300) and loop length
 - **Per-track controls**: Volume, Pan, Mute, Solo
 
-### 🎹 Performance Features
+### Performance Features
 - **QWERTY keyboard** becomes a piano (A-K keys)
 - **Chord mode** with 13 chord types on number keys
 - **Percussion mode** with drum triggering
 - **Octave switching** (0-8 range)
 - **Keyboard shortcuts** for transport and navigation
 
-### 📊 Visualization
+### Visualization
 - **Real-time oscilloscope** with phase alignment
 - **Separate drum oscilloscope** for percussion visualization
 - **Waveform smoothing** and frequency detection
 
-### 💾 Preset Management
+### Preset Management
 - **Instrument Library** with save/load
 - **Full patch export** (all modules + effects)
 - **Drum pattern presets** (4 built-in + custom)
@@ -69,7 +69,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Use Online (No Installation)
 Simply visit **[https://isaacamar.github.io/fractinst/](https://isaacamar.github.io/fractinst/)** and start making music!
@@ -99,7 +99,7 @@ The app will be available at `http://localhost:5173`
 
 ---
 
-## 🎓 How to Use
+## How to Use
 
 ### Basic Workflow
 1. **Play notes** - Use A-K keys for piano, W/E/T/Y/U for sharps/flats
@@ -119,7 +119,7 @@ For detailed tutorials and complete documentation, see **[the manual](https://is
 
 ---
 
-## 🏗️ Tech Stack
+## Tech Stack
 
 - **[React 18](https://react.dev/)** - UI framework
 - **[TypeScript](https://www.typescriptlang.org/)** - Type safety
@@ -134,7 +134,7 @@ No external audio libraries—everything is built on native Web Audio API for ma
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 fractinst/
@@ -162,35 +162,34 @@ fractinst/
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Whether it's bug reports, feature requests, or code contributions, all are appreciated.
 
 Please see **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines.
 
 ### Ways to Contribute
-- 🐛 Report bugs via [GitHub Issues](https://github.com/isaacamar/fractinst/issues)
-- 💡 Suggest features or improvements
-- 📝 Improve documentation
-- 🎨 Design presets or demo songs
-- 🔧 Submit pull requests
+- Report bugs via [GitHub Issues](https://github.com/isaacamar/fractinst/issues)
+- Suggest features or improvements
+- Improve documentation
+- Design presets or demo songs
+- Submit pull requests
 
 ---
 
-## 💖 Support This Project
+## Support This Project
 
 FractInst is **free and open source**. If you find it useful, consider supporting continued development:
 
-- ☕ **[Buy me a coffee](https://buymeacoffee.com/YOUR_USERNAME)**
-- 💚 **[Sponsor on GitHub](https://github.com/sponsors/YOUR_USERNAME)**
-- ⭐ **Star this repository** to help others discover it
-- 🐦 **Share on social media** and tag [@YOUR_TWITTER]
+- **[Buy me a coffee](https://buymeacoffee.com/YOUR_USERNAME)**
+- **[Sponsor on GitHub](https://github.com/sponsors/YOUR_USERNAME)**
+- **Star this repository** to help others discover it
 
 Every bit of support helps maintain and improve FractInst!
 
 ---
 
-## 📜 License
+## License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
@@ -202,7 +201,7 @@ See **[CREDITS.md](CREDITS.md)** for full attributions.
 
 ---
 
-## 🌟 Roadmap
+## Roadmap
 
 ### Planned Features
 - [ ] Export to WAV/MP3
@@ -219,7 +218,7 @@ See [GitHub Issues](https://github.com/isaacamar/fractinst/issues) for full list
 
 ---
 
-## 📞 Community
+## Community
 
 - **GitHub Discussions**: [Ask questions & share creations](https://github.com/isaacamar/fractinst/discussions)
 - **Discord**: [Join the community](#) (Coming soon)
@@ -228,7 +227,7 @@ See [GitHub Issues](https://github.com/isaacamar/fractinst/issues) for full list
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built by **Isaac Amar**
 - Developed with assistance from various generative models - see [CREDITS.md](CREDITS.md) for details
@@ -237,7 +236,7 @@ See [GitHub Issues](https://github.com/isaacamar/fractinst/issues) for full list
 
 ---
 
-## 📊 Stats
+## Stats
 
 ![GitHub stars](https://img.shields.io/github/stars/isaacamar/fractinst?style=social)
 ![GitHub forks](https://img.shields.io/github/forks/isaacamar/fractinst?style=social)
@@ -245,6 +244,6 @@ See [GitHub Issues](https://github.com/isaacamar/fractinst/issues) for full list
 
 ---
 
-**Made with ❤️ and Web Audio API**
+**Made with Love and Web Audio API**
 
-[⬆ Back to top](#-fractinst---browser-based-modular-synthesizer--daw)
+[Back to top](#fractinst---browser-based-modular-synthesizer--daw)

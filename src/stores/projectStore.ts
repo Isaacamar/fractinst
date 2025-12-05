@@ -1,10 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Project, ProjectState, ProjectMetadata } from '../types/project';
-import { Track } from '../types/track';
+import { Project } from '../types/project';
 import { useTrackStore } from './trackStore';
 import { useSequencerStore } from './sequencerStore';
-import { useAudioStore } from './audioStore';
 import { useTransportStore } from './transportStore';
 
 interface ProjectStoreAction {

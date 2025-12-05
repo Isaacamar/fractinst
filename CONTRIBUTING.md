@@ -1,10 +1,10 @@
 # Contributing to FractInst
 
-First off, thank you for considering contributing to FractInst! 🎉
+First off, thank you for considering contributing to FractInst!
 
 FractInst is a community-driven open-source project, and we welcome contributions of all kinds.
 
-## 🤔 How Can I Contribute?
+## How Can I Contribute?
 
 ### Reporting Bugs
 
@@ -45,7 +45,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 - **Add comments** to complex code sections
 - **Test audio features** carefully - audio bugs are hard to reproduce
 
-## 🎨 Design Contributions
+## Design Contributions
 
 We welcome:
 - **Preset instruments** - Share your synth patches
@@ -53,7 +53,7 @@ We welcome:
 - **UI improvements** - Better layouts, colors, accessibility
 - **Documentation** - Tutorials, guides, videos
 
-## 📝 Documentation
+## Documentation
 
 Help improve the manual, README, or code comments:
 - Fix typos and clarify instructions
@@ -61,7 +61,7 @@ Help improve the manual, README, or code comments:
 - Improve the in-app manual
 - Create video tutorials or demos
 
-## 💻 Development Setup
+## Development Setup
 
 ### Prerequisites
 - Node.js 18+
@@ -105,7 +105,7 @@ src/
 - `src/components/ModuleSystem/` - Synth UI modules
 - `src/stores/` - Global state (audio params, tracks, etc.)
 
-## 🧪 Testing
+## Testing
 
 Before submitting a PR, please test:
 
@@ -129,7 +129,7 @@ npm run dev
 - Load/save presets
 ```
 
-## 🎵 Audio Development Notes
+## Audio Development Notes
 
 - **Web Audio API** runs on audio thread - minimize main thread work
 - **Avoid audio glitches** - be careful with real-time parameter changes
@@ -137,7 +137,7 @@ npm run dev
 - **True bypass** - disabled effects should use zero CPU
 - **Sample rate** - assume 48kHz but don't hardcode it
 
-## 📋 Code Style
+## Code Style
 
 - Use **TypeScript** for all new code
 - Use **functional components** and hooks
@@ -169,11 +169,11 @@ function applyEnvelope(
 }
 ```
 
-## 🔒 Security
+## Security
 
 If you discover a security vulnerability, please **DO NOT** open a public issue. Email the maintainer directly instead.
 
-## 📜 Code of Conduct
+## Code of Conduct
 
 - **Be respectful** and considerate
 - **Be collaborative** - help others learn
@@ -181,23 +181,23 @@ If you discover a security vulnerability, please **DO NOT** open a public issue.
 - **Give credit** where it's due
 - **Accept constructive criticism** gracefully
 
-## 💬 Communication
+## Communication
 
 - **GitHub Issues** - Bug reports and feature requests
 - **GitHub Discussions** - Questions, ideas, showcase
 - **Pull Requests** - Code contributions
 
-## 🙏 Recognition
+## Recognition
 
 All contributors will be recognized in:
 - The project's README
 - Release notes
 - A CONTRIBUTORS.md file (coming soon)
 
-## ⚖️ License
+## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-**Thank you for contributing to FractInst! Your help makes this project better for everyone.** 🎹🎶
+**Thank you for contributing to FractInst! Your help makes this project better for everyone.**

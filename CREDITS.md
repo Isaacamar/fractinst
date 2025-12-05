@@ -1,6 +1,6 @@
 # Credits & Acknowledgments
 
-## 👨‍💻 Primary Developer
+## Primary Developer
 
 **Isaac Amar**
 - Project creator and maintainer
@@ -9,9 +9,9 @@
 - User interface design
 - Testing and quality assurance
 
-## 🤖 Development Assistance
+## Development Assistance
 
-This project was developed with significant assistance from Claude (Anthropic), Gemeni(Google), and Composer (Cursor)
+This project was developed with significant assistance from Claude (Anthropic), Gemini (Google), and Composer (Cursor)
 
 ### What This Means
 
@@ -30,12 +30,12 @@ FractInst is **free and open source** partially because AI assistance was used i
 - All code is provided as-is under the MIT License for inspection and modification
 
 This development approach allowed for:
-- ✅ Faster iteration and feature development
-- ✅ More comprehensive documentation
-- ✅ Better code quality through pair programming
-- ✅ Focus on user experience over boilerplate
+- Faster iteration and feature development
+- More comprehensive documentation
+- Better code quality through pair programming
+- Focus on user experience over boilerplate
 
-## 🎵 Audio Samples & Assets
+## Audio Samples & Assets
 
 ### Drum Samples
 
@@ -52,7 +52,7 @@ This development approach allowed for:
 
 *If you are the rights holder for any samples and have concerns about their use, please contact the maintainer.*
 
-## 📚 Libraries & Dependencies
+## Libraries & Dependencies
 
 FractInst is built on excellent open-source libraries:
 
@@ -75,7 +75,7 @@ FractInst is built on excellent open-source libraries:
 
 See [package.json](package.json) for complete dependency list.
 
-## 🎨 Design Inspiration
+## Design Inspiration
 
 - **Roland TB-303** - Classic acid bassline synthesizer
 - **Roland TR-909** - Legendary drum machine
@@ -84,7 +84,7 @@ See [package.json](package.json) for complete dependency list.
 - **FL Studio** - Step sequencer pattern approach
 - **VCV Rack** - Modular synthesis UI patterns
 
-## 🌐 Web Audio API
+## Web Audio API
 
 Built entirely on the native **[Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)**:
 - No external audio processing libraries
@@ -92,7 +92,7 @@ Built entirely on the native **[Web Audio API](https://developer.mozilla.org/en-
 - Maximum performance and low latency
 - Thanks to the W3C Audio Working Group
 
-## 🙏 Special Thanks
+## Special Thanks
 
 - **The Web Audio API community** - for documentation, examples, and support
 - **Open source contributors** - for the amazing libraries we depend on
@@ -100,7 +100,7 @@ Built entirely on the native **[Web Audio API](https://developer.mozilla.org/en-
 - **Musicians and producers** - who inspire this project
 - **Anthropic** - for Claude, which made this development possible
 
-## 🎓 Educational Resources
+## Educational Resources
 
 Resources that helped shape this project:
 
@@ -109,14 +109,14 @@ Resources that helped shape this project:
 - [Sound on Sound - Synth Secrets](https://www.soundonsound.com/series/synth-secrets) articles
 - [The Audio Programmer](https://www.youtube.com/@TheAudioProgrammer) YouTube channel
 
-## 📝 License Summary
+## License Summary
 
 - **FractInst source code**: MIT License (see [LICENSE](LICENSE))
 - **TR-909 samples**: Public domain
 - **BVKER samples**: Royalty-free (verify before redistribution)
 - **Dependencies**: Various open-source licenses (see package.json)
 
-## 💬 Questions or Concerns?
+## Questions or Concerns?
 
 If you have questions about licensing, attributions, or credits:
 - Open an issue on GitHub
@@ -125,4 +125,4 @@ If you have questions about licensing, attributions, or credits:
 
 ---
 
-**FractInst would not exist without the contributions of countless developers, musicians, and open-source enthusiasts. Thank you!** 🎹❤️
+**FractInst would not exist without the contributions of countless developers, musicians, and open-source enthusiasts. Thank you!**
