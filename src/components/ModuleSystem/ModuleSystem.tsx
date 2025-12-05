@@ -15,6 +15,7 @@ import './ModuleSystem.css';
 interface ModuleSystemProps {
   audioContext: AudioContext | null;
   audioEngine: any; // AudioEngine instance
+  onStateChange?: (modules: InstrumentConfiguration['modules']) => void;
 }
 
 export interface ModuleSystemRef {
@@ -22,7 +23,7 @@ export interface ModuleSystemRef {
   loadInstrument: (config: InstrumentConfiguration) => void;
 }
 
-export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ audioContext, audioEngine }, ref) => {
+export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ audioContext, audioEngine, onStateChange }, ref) => {
   const [modules, setModules] = useState<Map<string, SynthModule>>(new Map());
   const [modulePositions, setModulePositions] = useState<Map<string, ModulePosition>>(new Map());
   const [menuOpen, setMenuOpen] = useState(false);
@@ -67,7 +68,7 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
 
     const initialModules = new Map<string, SynthModule>();
     const initialPositions = new Map<string, ModulePosition>();
-    
+
     baseModuleTypes.forEach((type, index) => {
       const module = manager.addModule(type);
       if (module) {
@@ -78,21 +79,21 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
         initialPositions.set(module.id, { column, row });
       }
     });
-    
+
     setModules(initialModules);
     setModulePositions(initialPositions);
 
     // Listen to module events - only add once
     const handleModuleAdded = (module: SynthModule) => {
       if (isLoadingInstrumentRef.current) return; // Ignore during instrument loading
-      
+
       setModules(prev => {
         if (prev.has(module.id)) return prev; // Already added
         const next = new Map(prev);
         next.set(module.id, module);
         return next;
       });
-      
+
       setModulePositions(prev => {
         if (prev.has(module.id)) return prev; // Already positioned
         // Add to shortest column
@@ -110,7 +111,7 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
 
     const handleModuleRemoved = (module: SynthModule) => {
       if (isLoadingInstrumentRef.current) return; // Ignore during instrument loading
-      
+
       setModules(prev => {
         const next = new Map(prev);
         next.delete(module.id);
@@ -148,7 +149,7 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
   const handleModuleToggle = (moduleId: string, enabled: boolean) => {
     if (!moduleManagerRef.current) return;
     moduleManagerRef.current.toggleModule(moduleId, enabled);
-    
+
     // Update module state
     setModules(prev => {
       const next = new Map(prev);
@@ -158,7 +159,7 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
       }
       return next;
     });
-    
+
     // Apply to audio engine
     const module = moduleManagerRef.current.getModule(moduleId);
     if (module && audioEngine) {
@@ -174,7 +175,7 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
     const rect = moduleElement.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
-    
+
     setDraggedModule({ id: moduleId, offsetX, offsetY });
 
     const startColumn = modulePositions.get(moduleId)?.column ?? 0;
@@ -197,7 +198,7 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
       const columnWidth = containerRect.width / 5;
       const relativeX = moveEvent.clientX - containerRect.left;
       const newColumn = Math.max(0, Math.min(4, Math.floor(relativeX / columnWidth)));
-      
+
       if (newColumn !== currentColumn) {
         currentColumn = newColumn;
         setModulePositions(prev => {
@@ -242,7 +243,7 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
       modulesByColumn[position.column].push(module);
     }
   });
-  
+
   // Sort modules within each column by row
   modulesByColumn.forEach(columnModules => {
     columnModules.sort((a, b) => {
@@ -252,12 +253,29 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
       return posA.row - posB.row;
     });
   });
-  
+
   // Debug: log module counts
   if (modules.size > 0 && modulesByColumn.every(col => col.length === 0)) {
     console.warn('Modules exist but not positioned:', Array.from(modules.keys()));
     console.warn('Positions:', Array.from(modulePositions.entries()));
   }
+
+  // Sync state changes to parent
+  useEffect(() => {
+    if (isLoadingInstrumentRef.current || !onStateChange) return;
+
+    const exportedModules = Array.from(modules.values()).map(module => ({
+      id: module.id,
+      type: module.type,
+      name: module.name,
+      enabled: module.enabled,
+      parameters: { ...module.parameters },
+      position: modulePositions.get(module.id) || { column: 0, row: 0 }
+    }));
+
+    // Debounce or just call? For now just call, optimization later if needed
+    onStateChange(exportedModules);
+  }, [modules, modulePositions, onStateChange]);
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
@@ -304,7 +322,11 @@ export const ModuleSystem = forwardRef<ModuleSystemRef, ModuleSystemProps>(({ au
 
         setModules(newModules);
         setModulePositions(newPositions);
-        isLoadingInstrumentRef.current = false;
+
+        // Reset loading flag after state update
+        setTimeout(() => {
+          isLoadingInstrumentRef.current = false;
+        }, 50);
       }, 10);
     }
   }), [modules, modulePositions, audioContext]);

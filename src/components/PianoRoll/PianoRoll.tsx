@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { ArrangementView } from './ArrangementView';
 import { MidiEditor } from './MidiEditor';
+import { SequenceBlockLibrary } from './SequenceBlockLibrary';
 import { useTrackStore } from '../../stores/trackStore';
 import type { Transport } from '../../engines/Transport';
 import type { AudioEngine } from '../../engines/AudioEngine';
 import type { DAWCore } from '../../engines/DAWCore';
 import type { MidiRecorder } from '../../engines/MidiRecorder';
+import type { SequenceBlockData } from '../../types/percussion';
+import type { DrumSound } from '../../engines/DrumMachine';
 
 interface PianoRollProps {
   transport: Transport | null;
@@ -22,22 +25,44 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
   onSwitchToInstrument
 }) => {
   const [editorTrackId, setEditorTrackId] = useState<string | null>(null);
+  const [draggedBlock, setDraggedBlock] = useState<{
+    blockData: SequenceBlockData;
+    selectedSounds: DrumSound[];
+  } | null>(null);
   const { tracks } = useTrackStore();
 
   const activeTrack = editorTrackId ? tracks.find(t => t.id === editorTrackId) : null;
 
+  const handleDragStart = (blockData: SequenceBlockData, selectedSounds: DrumSound[]) => {
+    setDraggedBlock({ blockData, selectedSounds });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedBlock(null);
+  };
+
   return (
     <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <ArrangementView
-          transport={transport}
-          dawCore={dawCore}
-          onOpenEditor={setEditorTrackId}
-          onSwitchToInstrument={onSwitchToInstrument}
-        />
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'row' }}>
+        {/* Main arrangement area */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <ArrangementView
+            transport={transport}
+            dawCore={dawCore}
+            onOpenEditor={setEditorTrackId}
+            onSwitchToInstrument={onSwitchToInstrument}
+            draggedBlock={draggedBlock}
+            onDragEnd={handleDragEnd}
+          />
+        </div>
+
+        {/* Sequence block library sidebar */}
+        <div style={{ width: '280px', display: 'flex', flexDirection: 'column' }}>
+          <SequenceBlockLibrary onDragStart={handleDragStart} />
+        </div>
       </div>
-      
-      {editorTrackId && activeTrack && (
+
+      {editorTrackId && activeTrack && activeTrack.type === 'midi' && (
         <div style={{ height: '50%', minHeight: '200px', borderTop: '4px solid #111', display: 'flex', flexDirection: 'column', boxShadow: '0 -2px 10px rgba(0,0,0,0.5)' }}>
           <MidiEditor
             transport={transport}

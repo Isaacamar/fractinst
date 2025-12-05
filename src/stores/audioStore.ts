@@ -8,11 +8,11 @@ import type { AudioEngineParams } from '../engines/types';
 interface AudioStore {
   // Parameters
   params: AudioEngineParams;
-  
+
   // Bypass states
   filterBypassed: boolean;
   distortionBypassed: boolean;
-  
+
   // Actions
   setWaveType: (type: OscillatorType) => void;
   setMasterVolume: (volume: number) => void;
@@ -42,10 +42,38 @@ interface AudioStore {
   setFilterEnvAttack: (time: number) => void;
   setFilterEnvDecay: (time: number) => void;
   setFilterEnvAmount: (amount: number) => void;
-  
+
   // State
   activeNoteCount: number;
   setActiveNoteCount: (count: number) => void;
+}
+
+// Audio Parameters Interface
+export interface AudioParams {
+  waveType: 'sine' | 'square' | 'sawtooth' | 'triangle';
+  masterVolume: number;
+  attackTime: number;
+  decayTime: number;
+  sustainLevel: number;
+  releaseTime: number;
+  filterCutoff: number;
+  filterResonance: number;
+  filterType: BiquadFilterType;
+  distortionAmount: number;
+  chorusAmount: number;
+  reverbAmount: number;
+  lfoRate: number;
+  lfoDepth: number;
+  lfoWaveType: OscillatorType;
+  lfoTarget: 'cutoff' | 'amplitude' | 'pitch';
+  unisonMode: boolean;
+  unisonVoices: number;
+  unisonDetune: number;
+  masterDetune: number;
+  noiseAmount: number;
+  filterEnvAttack: number;
+  filterEnvDecay: number;
+  filterEnvAmount: number;
 }
 
 const defaultParams: AudioEngineParams = {
@@ -79,7 +107,7 @@ export const useAudioStore = create<AudioStore>((set) => ({
   params: defaultParams,
   filterBypassed: false,
   distortionBypassed: true, // Distortion bypassed by default
-  
+
   setWaveType: (type) => set((state) => ({ params: { ...state.params, waveType: type } })),
   setMasterVolume: (volume) => set((state) => ({ params: { ...state.params, masterVolume: volume / 100 } })),
   setAttackTime: (time) => set((state) => ({ params: { ...state.params, attackTime: time } })),
@@ -93,11 +121,11 @@ export const useAudioStore = create<AudioStore>((set) => ({
   setDistortionAmount: (amount) => set((state) => ({ params: { ...state.params, distortionAmount: Math.max(0, Math.min(100, amount)) } })),
   setDistortionBypass: (bypassed) => set({ distortionBypassed: bypassed }),
   setChorusAmount: (amount) => set((state) => ({ params: { ...state.params, chorusAmount: Math.max(0, Math.min(100, amount)) } })),
-  setChorusBypass: () => {}, // Will be handled by audio engine directly
+  setChorusBypass: () => { }, // Will be handled by audio engine directly
   setReverbAmount: (amount) => set((state) => ({ params: { ...state.params, reverbAmount: Math.max(0, Math.min(100, amount)) } })),
-  setReverbBypass: () => {}, // Will be handled by audio engine directly
-  setCompressorBypass: () => {}, // Will be handled by audio engine directly
-  setDelayBypass: () => {}, // Will be handled by audio engine directly
+  setReverbBypass: () => { }, // Will be handled by audio engine directly
+  setCompressorBypass: () => { }, // Will be handled by audio engine directly
+  setDelayBypass: () => { }, // Will be handled by audio engine directly
   setLFORate: (rate) => set((state) => ({ params: { ...state.params, lfoRate: Math.max(0.1, Math.min(20, rate)) } })),
   setLFODepth: (depth) => set((state) => ({ params: { ...state.params, lfoDepth: Math.max(0, Math.min(100, depth)) } })),
   setLFOWaveType: (type) => set((state) => ({ params: { ...state.params, lfoWaveType: type } })),
@@ -108,7 +136,7 @@ export const useAudioStore = create<AudioStore>((set) => ({
   setFilterEnvAttack: (time) => set((state) => ({ params: { ...state.params, filterEnvAttack: Math.max(0, Math.min(1000, time)) } })),
   setFilterEnvDecay: (time) => set((state) => ({ params: { ...state.params, filterEnvDecay: Math.max(0, Math.min(1000, time)) } })),
   setFilterEnvAmount: (amount) => set((state) => ({ params: { ...state.params, filterEnvAmount: Math.max(0, Math.min(5000, amount)) } })),
-  
+
   activeNoteCount: 0,
   setActiveNoteCount: (count) => set({ activeNoteCount: count }),
 }));

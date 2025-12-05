@@ -43,4 +43,39 @@
   border-color: #00ff88;
 }
 
+.add-track-wrapper {
+  position: relative;
+}
+
+.track-type-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px;
+  min-width: 140px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.track-type-option {
+  width: 100%;
+  background: transparent;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  text-align: left;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+
+.track-type-option:hover {
+  background: #333;
+  color: #00ff88;
+}
 

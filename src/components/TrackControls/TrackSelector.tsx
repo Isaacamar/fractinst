@@ -1,21 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTrackStore } from '../../stores/trackStore';
+import type { MidiTrack, PercussionTrack } from '../../types/track';
 import './TrackSelector.css';
 
 export const TrackSelector: React.FC = () => {
   const { tracks, activeTrackId, setActiveTrack, addTrack } = useTrackStore();
+  const [showTrackTypeMenu, setShowTrackTypeMenu] = useState(false);
 
   const handleTrackChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const trackId = e.target.value;
     setActiveTrack(trackId);
   };
 
-  const handleAddTrack = () => {
+  const handleAddMidiTrack = () => {
     const trackId = `track_${Date.now()}`;
     const instrumentId = `instrument_${Date.now()}`;
-    const newTrack = {
+    const newTrack: MidiTrack = {
       id: trackId,
-      name: `Track ${tracks.length + 1}`,
+      type: 'midi',
+      name: `MIDI ${tracks.filter(t => t.type === 'midi').length + 1}`,
       color: `hsl(${Math.random() * 360}, 70%, 50%)`,
       volume: 0.8,
       pan: 0,
@@ -49,7 +52,9 @@ export const TrackSelector: React.FC = () => {
           noiseAmount: 0,
           filterEnvAttack: 0.1,
           filterEnvDecay: 0.3,
-          filterEnvAmount: 0
+          filterEnvAmount: 0,
+          unisonMode: false,
+          unisonVoices: 3
         },
         filterBypassed: false,
         distortionBypassed: true,
@@ -57,14 +62,31 @@ export const TrackSelector: React.FC = () => {
       },
       clips: []
     };
-    // @ts-ignore - InstrumentConfig type mismatch in store vs here, but it works for now
     addTrack(newTrack);
+    setShowTrackTypeMenu(false);
+  };
+
+  const handleAddPercussionTrack = () => {
+    const trackId = `track_${Date.now()}`;
+    const newTrack: PercussionTrack = {
+      id: trackId,
+      type: 'percussion',
+      name: `Perc ${tracks.filter(t => t.type === 'percussion').length + 1}`,
+      color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+      volume: 0.8,
+      pan: 0,
+      muted: false,
+      soloed: false,
+      clips: []
+    };
+    addTrack(newTrack);
+    setShowTrackTypeMenu(false);
   };
 
   return (
     <div className="track-selector">
-      <select 
-        value={activeTrackId || ''} 
+      <select
+        value={activeTrackId || ''}
         onChange={handleTrackChange}
         className="track-select-dropdown"
       >
@@ -75,9 +97,24 @@ export const TrackSelector: React.FC = () => {
           </option>
         ))}
       </select>
-      <button className="add-track-btn" onClick={handleAddTrack}>
-        +
-      </button>
+      <div className="add-track-wrapper">
+        <button
+          className="add-track-btn"
+          onClick={() => setShowTrackTypeMenu(!showTrackTypeMenu)}
+        >
+          +
+        </button>
+        {showTrackTypeMenu && (
+          <div className="track-type-menu">
+            <button onClick={handleAddMidiTrack} className="track-type-option">
+              MIDI Track
+            </button>
+            <button onClick={handleAddPercussionTrack} className="track-type-option">
+              Percussion Track
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

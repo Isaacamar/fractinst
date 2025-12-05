@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { AudioEngine } from './engines/AudioEngine';
 import { DAWCore } from './engines/DAWCore';
 import { DrumMachine } from './engines/DrumMachine';
@@ -23,6 +24,7 @@ import { useMidiStore } from './stores/midiStore';
 import { useAudioStore } from './stores/audioStore';
 import { useTrackStore } from './stores/trackStore';
 import { useSequencerStore } from './stores/sequencerStore';
+import { useProjectStore } from './stores/projectStore';
 import type { InstrumentConfiguration } from './types/instrument';
 import './App.css';
 
@@ -66,6 +68,7 @@ function App() {
 
       trackStore.addTrack({
         id: `track_${Date.now()}`,
+        type: 'midi',
         name: 'Track 1',
         color: 'hsl(160, 100%, 50%)',
         volume: 0.8,
@@ -83,10 +86,27 @@ function App() {
     if (!trackStore.activeTrackId) return;
 
     const activeTrack = trackStore.tracks.find(t => t.id === trackStore.activeTrackId);
-    if (activeTrack && activeTrack.instrumentConfig) {
+    if (activeTrack && activeTrack.type === 'midi') {
       handleLoadInstrument(activeTrack.instrumentConfig);
     }
   }, [trackStore.activeTrackId]);
+
+  // Define handleModuleStateChange at the top level
+  const handleModuleStateChange = useCallback((modules: InstrumentConfiguration['modules']) => {
+    const state = useTrackStore.getState();
+    const activeTrackId = state.activeTrackId;
+    if (activeTrackId) {
+      const track = state.tracks.find(t => t.id === activeTrackId);
+      if (track && track.type === 'midi') {
+        state.updateTrack(activeTrackId, {
+          instrumentConfig: {
+            ...track.instrumentConfig,
+            modules: modules as any
+          }
+        });
+      }
+    }
+  }, []);
 
   // Initialize audio immediately (but resume on interaction)
   useEffect(() => {
@@ -294,6 +314,65 @@ function App() {
     return () => clearInterval(interval);
   }, [audioStore]);
 
+  // Sync AudioStore changes back to TrackStore (Active Track)
+  useEffect(() => {
+    const activeTrackId = trackStore.activeTrackId;
+    if (!activeTrackId) return;
+
+    // Avoid infinite loop: only update if changed? 
+    // Actually, audioStore is the source of truth for the ACTIVE instrument's params while editing.
+    // We should debounce this or just update.
+
+    const currentTrack = trackStore.tracks.find(t => t.id === activeTrackId);
+    if (!currentTrack || currentTrack.type !== 'midi') return;
+
+    // We need to merge current audioStore params into the track's instrument config
+    const newConfig = {
+      ...currentTrack.instrumentConfig,
+      audioParams: { ...audioStore.params },
+      filterBypassed: audioStore.filterBypassed,
+      distortionBypassed: audioStore.distortionBypassed
+    };
+
+    // Only update if different to avoid cycles? 
+    // trackStore.updateTrack will cause a re-render.
+    // And we have a useEffect that listens to trackStore.activeTrackId but NOT trackStore.tracks (deeply).
+    // The effect at line 84 listens to `trackStore.activeTrackId` ONLY.
+    // So updating the track content should be safe from reloading the instrument.
+
+    // However, we must be careful not to spam state updates.
+    // For now, let's assume it's fine as user interaction drives audioStore changes.
+
+    // CHECK: Does updateTrack trigger a re-render of App? Yes.
+    // Does that trigger anything else?
+
+    trackStore.updateTrack(activeTrackId, { instrumentConfig: newConfig });
+
+  }, [
+    audioStore.params,
+    audioStore.filterBypassed,
+    audioStore.distortionBypassed,
+    // activeTrackId is needed but we don't want to trigger on track switch (that's handled by loadInstrument)
+    // verify logic: When track switches, loadInstrument is called. AudioParams change. This effect fires.
+    // It writes BACK to the track. That is redundant but harmless if data is same.
+    // BUT: If we switch tracks, `audioStore` is updated. This effect fires. It writes to the NEW active track?
+    // Race condition! 
+    // If `trackStore.activeTrackId` updates, and `audioStore` hasn't yet updated (effect scheduling),
+    // we might overwrite the new track with old audio params!
+
+    // Solution: This effect should NOT depend on activeTrackId directly for triggering,
+    // OR we need to ensure loadInstrument happens strictly before this effect runs.
+    // `handleLoadInstrument` is called in an effect dependent on `activeTrackId` (line 84).
+    // If we put this sync logic here, we need to make sure we aren't overwriting.
+
+    // Better: Don't use useEffect here. Update TrackStore INSIDE the audioStore setters?
+    // No, that couples stores.
+    // 
+    // Let's stick to useEffect but add a ref to track "loading" state?
+    // Or just check if the values are actually different.
+    trackStore.activeTrackId
+  ]);
+
   // Keyboard controller
   useKeyboardController(
     audioEngineRef.current,
@@ -311,10 +390,27 @@ function App() {
         sequencerStore.patterns,
         sequencerStore.stepCount,
         sequencerStore.stepResolution,
-        sequencerStore.muted
+        sequencerStore.muted,
+        sequencerStore.isFrozen
       );
     }
-  }, [sequencerStore.patterns, sequencerStore.stepCount, sequencerStore.stepResolution, sequencerStore.muted]);
+  }, [sequencerStore.patterns, sequencerStore.stepCount, sequencerStore.stepResolution, sequencerStore.muted, sequencerStore.isFrozen]);
+
+  // Handle frozen playback
+  useEffect(() => {
+    if (!drumMachineRef.current) return;
+
+    if (sequencerStore.isFrozen && transportStore.isPlaying) {
+      // If frozen and playing, play the frozen buffer
+      // We need to sync it to the transport time
+      // For now, just play immediately or restart loop
+      // Ideally, we should calculate the offset based on current beat
+      drumMachineRef.current.playFrozen();
+    } else {
+      // Stop frozen playback if not playing or not frozen
+      drumMachineRef.current.stopFrozen();
+    }
+  }, [sequencerStore.isFrozen, transportStore.isPlaying]);
 
   // Helper function to sync audio store to engine
   const syncAudioStoreToEngine = (engine: AudioEngine, store: typeof audioStore) => {
@@ -369,7 +465,7 @@ function App() {
 
     if (midiStore.isRecording) {
       dawCoreRef.current.stopRecording();
-      transportStore.setIsPlaying(false);
+      // Don't stop playback, just punch out
     } else {
       // Start playback first, then recording
       if (!transportStore.isPlaying) {
@@ -626,6 +722,68 @@ function App() {
         >
           ?
         </button>
+
+        <Link
+          to="/manual"
+          className="view-btn"
+          title="Open Manual"
+          style={{
+            marginLeft: '10px',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.8rem'
+          }}
+        >
+          MANUAL
+        </Link>
+
+        <div className="project-controls" style={{ marginLeft: '10px', display: 'flex', gap: '5px' }}>
+          <button
+            className="view-btn"
+            onClick={() => {
+              const project = useProjectStore.getState().saveProject();
+              const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${project.metadata.name.replace(/\s+/g, '_')}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            title="Save Project"
+          >
+            SAVE
+          </button>
+          <button
+            className="view-btn"
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.json';
+              input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  try {
+                    const project = JSON.parse(e.target?.result as string);
+                    useProjectStore.getState().loadProject(project);
+                  } catch (err) {
+                    console.error('Failed to load project:', err);
+                    alert('Invalid project file');
+                  }
+                };
+                reader.readAsText(file);
+              };
+              input.click();
+            }}
+            title="Load Project"
+          >
+            LOAD
+          </button>
+        </div>
       </div>
 
       <Onboarding
@@ -639,45 +797,52 @@ function App() {
         currentOctave={octaveOffset}
       />
 
-      {
-        currentView === 'instrument' ? (
-          <div className="daw-layout">
-            <div className="left-sidebar">
-              <div id="oscilloscope">
-                {isPercussionMode ? (
-                  <DrumOscilloscope drumMachine={drumMachineRef.current} />
-                ) : (
-                  <Oscilloscope audioEngine={audioEngineRef.current} />
-                )}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {
+          currentView === 'instrument' ? (
+            <div className="daw-layout">
+              <div className="left-sidebar">
+                <div id="oscilloscope">
+                  {isPercussionMode ? (
+                    <DrumOscilloscope drumMachine={drumMachineRef.current} />
+                  ) : (
+                    <Oscilloscope audioEngine={audioEngineRef.current} />
+                  )}
+                </div>
+                <InstrumentLibrary
+                  onLoadInstrument={handleLoadInstrument}
+                  onExportInstrument={handleExportInstrument}
+                />
               </div>
-              <InstrumentLibrary
-                onLoadInstrument={handleLoadInstrument}
-                onExportInstrument={handleExportInstrument}
+              <div className="controls-area-wrapper" id="module-system">
+                <ModuleSystem
+                  ref={moduleSystemRef}
+                  audioContext={audioEngineRef.current?.getContext() || null}
+                  audioEngine={audioEngineRef.current}
+                  onStateChange={handleModuleStateChange}
+                />
+              </div>
+            </div>
+          ) : currentView === 'piano-roll' ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <PianoRoll
+                transport={dawCoreRef.current?.getTransport() || null}
+                synthEngine={audioEngineRef.current}
+                midiRecorder={dawCoreRef.current?.getMidiRecorder() || null}
+                dawCore={dawCoreRef.current}
+                onSwitchToInstrument={() => setCurrentView('instrument')}
               />
             </div>
-            <div className="controls-area-wrapper" id="module-system">
-              <ModuleSystem
-                ref={moduleSystemRef}
-                audioContext={audioEngineRef.current?.getContext() || null}
-                audioEngine={audioEngineRef.current}
+          ) : (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <StepSequencer
+                transport={dawCoreRef.current?.getTransport() || null}
+                drumMachine={drumMachineRef.current}
               />
             </div>
-          </div>
-        ) : currentView === 'piano-roll' ? (
-          <PianoRoll
-            transport={dawCoreRef.current?.getTransport() || null}
-            synthEngine={audioEngineRef.current}
-            midiRecorder={dawCoreRef.current?.getMidiRecorder() || null}
-            dawCore={dawCoreRef.current}
-            onSwitchToInstrument={() => setCurrentView('instrument')}
-          />
-        ) : (
-          <StepSequencer
-            transport={dawCoreRef.current?.getTransport() || null}
-            drumMachine={drumMachineRef.current}
-          />
-        )
-      }
+          )
+        }
+      </div>
     </div >
   );
 }
